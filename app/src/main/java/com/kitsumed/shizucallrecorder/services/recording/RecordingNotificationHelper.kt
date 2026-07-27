@@ -135,7 +135,7 @@ class RecordingNotificationHelper(private val context: Context) {
                     actionIntentAction = RecordingForegroundService.ACTION_PAUSE_RECORDING
                 }
             }
-            else -> {
+            is RecordingServiceState.Standby -> {
                 titleRes = R.string.recording_standby_notification_title
                 contentRes = R.string.recording_notification_press_to_start
                 actionIcon = R.drawable.ic_mic
@@ -166,8 +166,8 @@ class RecordingNotificationHelper(private val context: Context) {
             .setAutoCancel(false)
             .setOnlyAlertOnce(true)
             .setColor(Green40.toArgb())
-            .setColorized(state is RecordingServiceState.Active && !state.isPaused)
-            .setSilent(state is RecordingServiceState.Active || state is RecordingServiceState.Starting) // Don't do a screen-incursion if we are already recording.
+            .setColorized(state.isRecordingActive && !state.isRecordingPaused)
+            .setSilent(state.isStarting || state.isRecordingActive) // Don't do a screen-incursion if we are already recording.
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
 
         if (actionText != null && actionIntentAction != null && actionIcon != null) {
@@ -193,28 +193,28 @@ class RecordingNotificationHelper(private val context: Context) {
         if (oldState == newState) return // Ignore duplicates
 
         when (newState) {
-            is RecordingServiceState.Standby -> {
+            is RecordingServiceState.Standby  -> {
                 if (newState.metadata == null) {
                     showToast(context.getString(R.string.recording_toast_ended))
                     vibrate(VibrationEffect.createWaveform(longArrayOf(0, 300, 150, 300), intArrayOf(0, 64, 0, 128), -1))
-                } else if (oldState !is RecordingServiceState.Standby) {
+                } else {
                     val dirLabel = newState.metadata.direction.labelResId.let { context.getString(it) }
                     showToast(context.getString(R.string.recording_toast_standby, dirLabel))
                 }
             }
-            is RecordingServiceState.Active -> {
-                val wasActive = oldState is RecordingServiceState.Active
-                val wasPaused = wasActive && (oldState as RecordingServiceState.Active).isPaused
 
-                if (newState.isPaused && (!wasActive || !wasPaused)) {
+            is RecordingServiceState.Active -> {
+                val wasActiveAndPaused = oldState.isRecordingPaused
+
+                if (newState.isPaused && !wasActiveAndPaused) {
                     // Recording was paused
                     showToast(context.getString(R.string.recording_toast_paused))
                     vibrate(VibrationEffect.createWaveform(longArrayOf(0, 300, 150, 300), intArrayOf(0, 64, 0, 128), -1))
-                } else if (!newState.isPaused && wasPaused) {
+                } else if (!newState.isPaused && wasActiveAndPaused) {
                     // Recording was resumed
                     showToast(context.getString(R.string.recording_toast_resumed))
                     vibrate(VibrationEffect.createWaveform(longArrayOf(0, 300, 150, 300), intArrayOf(0, 64, 0, 128), -1))
-                } else if (!newState.isPaused && !wasActive) {
+                } else if (!newState.isPaused) {
                     // Recording was started
                     showToast(context.getString(R.string.recording_started))
                     vibrate(VibrationEffect.createWaveform(longArrayOf(0, 300, 150, 300), intArrayOf(0, 64, 0, 128), -1))
