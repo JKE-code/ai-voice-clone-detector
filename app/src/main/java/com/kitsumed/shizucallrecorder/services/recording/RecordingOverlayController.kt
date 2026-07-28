@@ -39,8 +39,8 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Controller that hosts a ComposeView inside WindowManager for the recording overlay.
- * This involves complicated stuff as compose was not made for this : https://helw.net/2025/08/31/compose-ui-without-an-activity/
+ * Controller that hosts a ComposeView inside WindowManager for the optional recording overlay popup.
+ * This involves a bit of complicated stuff as compose was not made for this : https://helw.net/2025/08/31/compose-ui-without-an-activity/
  */
 class RecordingOverlayController(private val context: Context) {
     private val overlayContext: Context by lazy {
@@ -111,7 +111,14 @@ class RecordingOverlayController(private val context: Context) {
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    // FLAG_SHOW_WHEN_LOCKED and FLAG_TURN_SCREEN_ON are deprecated.
+                    // The new alternative (like Activity.setShowWhenLocked) only function on Activity.
+                    // Because this UI is injected via WindowManager from a Service, these layout flags
+                    // are the fastest and easier way to display the overlay over the lock screen. We do not have an Activity context here.
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.END
