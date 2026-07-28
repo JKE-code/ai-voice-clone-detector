@@ -78,6 +78,8 @@ class AppPreferences(context: Context) {
         val THEME_MODE = ThemeMode.SYSTEM
         const val DYNAMIC_COLOR = true
         const val SHOW_TOASTS = true
+        const val SHOW_RECORDING_OVERLAY = false
+        const val OVERLAY_Y_POSITION = -1
         // --- Security ---
         const val SHIZUKU_AUTO_MANAGE = false
         const val SHIZUKU_START_ON_RECORD = false
@@ -118,6 +120,8 @@ class AppPreferences(context: Context) {
         THEME_MODE("theme_mode"),
         DYNAMIC_COLOR("dynamic_color"),
         SHOW_TOASTS("show_toasts"),
+        SHOW_RECORDING_OVERLAY("show_recording_overlay"),
+        OVERLAY_Y_POSITION("overlay_y_position"),
         SHIZUKU_AUTO_MANAGE("shizuku_auto_manage"),
         SHIZUKU_START_ON_RECORD("shizuku_start_on_record"),
         SHIZUKU_KEEP_ALIVE("shizuku_keep_alive"),
@@ -404,6 +408,18 @@ class AppPreferences(context: Context) {
 
     /** Sets whether toast notifications are enabled. */
     fun setShowToastsEnabled(enabled: Boolean) = setBoolean(Key.SHOW_TOASTS, enabled)
+
+    /** Checks if the recording overlay is enabled. */
+    fun isOverlayEnabled() = getBoolean(Key.SHOW_RECORDING_OVERLAY, DefaultsValue.SHOW_RECORDING_OVERLAY)
+
+    /** Sets whether the recording overlay is enabled. */
+    fun setOverlayEnabled(enabled: Boolean) = setBoolean(Key.SHOW_RECORDING_OVERLAY, enabled)
+
+    /** Gets the Y position of the recording overlay. */
+    fun getOverlayYPosition() = getInt(Key.OVERLAY_Y_POSITION, DefaultsValue.OVERLAY_Y_POSITION)
+
+    /** Sets the Y position of the recording overlay. */
+    fun setOverlayYPosition(y: Int) = setInt(Key.OVERLAY_Y_POSITION, y)
 
     // -------- Security --------
 

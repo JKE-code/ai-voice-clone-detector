@@ -203,6 +203,8 @@
     <string name="settings_theme_mode">Theme mode</string>
     <string name="settings_dynamic_color">Dynamic Theme Color</string>
     <string name="settings_show_toasts">Show Toast Notifications</string>
+    <string name="settings_overlay_title">Show recording overlay</string>
+    <string name="settings_overlay_subtitle">Draw an overlay on top of other apps with quick actions to manage the recording.</string>
 
     <string name="settings_theme_mode_system">System default</string>
     <string name="settings_theme_mode_light">Light</string>

@@ -9,8 +9,10 @@
 package com.kitsumed.shizucallrecorder.ui.screens
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
@@ -79,9 +81,11 @@ import com.kitsumed.shizucallrecorder.ui.viewmodels.SettingsActions
 import com.kitsumed.shizucallrecorder.ui.viewmodels.SettingsViewModel
 import com.mikepenz.aboutlibraries.ui.compose.android.produceLibraries
 import com.mikepenz.aboutlibraries.ui.compose.m3.LibrariesContainer
+import com.kitsumed.shizucallrecorder.system.permissions.PermissionChecks
 import kotlinx.coroutines.delay
 import org.xmlpull.v1.XmlPullParser
 import java.util.Locale
+import androidx.core.net.toUri
 
 /**
  * Stateful wrapper for the Settings screen that connects [SettingsViewModel] to [SettingsContent].
@@ -324,6 +328,7 @@ private fun VisualSection(preferences: AppPreferences, updateTrigger: Int, actio
     val currentThemeMode = remember(updateTrigger) { preferences.getThemeMode() }
     val isDynamicColorEnabled = remember(updateTrigger) { preferences.isDynamicColorEnabled() }
     val isShowToastsEnabled = remember(updateTrigger) { preferences.isShowToastsEnabled() }
+    val isRecordingOverlayEnabled = remember(updateTrigger) { preferences.isOverlayEnabled() }
     val context = LocalContext.current
     val resources = LocalResources.current
 
@@ -395,6 +400,22 @@ private fun VisualSection(preferences: AppPreferences, updateTrigger: Int, actio
             label           = stringResource(R.string.settings_show_toasts),
             checked         = isShowToastsEnabled,
             onCheckedChange = { actions.setShowToastsEnabled(it) }
+        )
+        ToggleListItem(
+            label = stringResource(R.string.settings_overlay_title),
+            description = stringResource(R.string.settings_overlay_subtitle),
+            checked = isRecordingOverlayEnabled,
+            onCheckedChange = { enabled ->
+                if (enabled && !PermissionChecks.hasOverlayPermission(context)) {
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        "package:${context.packageName}".toUri()
+                    )
+                    context.startActivity(intent)
+                } else {
+                    actions.setOverlayEnabled(enabled)
+                }
+            }
         )
     }
 }
@@ -1201,6 +1222,7 @@ private fun SettingsScreenPreview() {
             override fun setCallDetectionMode(mode: CallDetectionMode) {}
             override fun setRecordThirdPartyCalls(enabled: Boolean) {}
             override fun setPostRecordingFileNotification(enabled: Boolean) {}
+            override fun setOverlayEnabled(enabled: Boolean) {}
         }
 
         // File name template selection dialog

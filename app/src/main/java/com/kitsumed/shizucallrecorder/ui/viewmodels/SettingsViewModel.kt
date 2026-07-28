@@ -77,6 +77,7 @@ interface SettingsActions {
     fun setCallDetectionMode(mode: CallDetectionMode)
     fun setRecordThirdPartyCalls(enabled: Boolean)
     fun setPostRecordingFileNotification(enabled: Boolean)
+    fun setOverlayEnabled(enabled: Boolean)
 }
 
 /**
@@ -421,6 +422,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
      */
     override fun setPostRecordingFileNotification(enabled: Boolean) {
         preferences.setPostRecordingFileActionsNotificationEnabled(enabled)
+        refresh()
+    }
+
+    /**
+     * Enables or disables the floating overlay that allows users to control recording while in a call.
+     */
+    override fun setOverlayEnabled(enabled: Boolean) {
+        preferences.setOverlayEnabled(enabled)
         refresh()
     }
 }

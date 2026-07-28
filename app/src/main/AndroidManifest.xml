@@ -18,6 +18,8 @@
     <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Required to get the real app name from the package name, for file formatting -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="PackageVisibilityPolicy,QueryAllPackagesPermission" />
+    <!-- Required to show the floating window with the recording controls, disabled by default -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <!--
          Required to read call log history and to receive the phone number in the PHONE_STATE broadcast intent.

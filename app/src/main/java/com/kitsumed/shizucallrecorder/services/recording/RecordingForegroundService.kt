@@ -10,28 +10,22 @@ package com.kitsumed.shizucallrecorder.services.recording
 
 import android.app.Notification
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
-import android.provider.CallLog
 import androidx.core.content.IntentCompat
 import androidx.documentfile.provider.DocumentFile
 import com.kitsumed.shizucallrecorder.IShellService
 import com.kitsumed.shizucallrecorder.R
 import com.kitsumed.shizucallrecorder.data.AppPreferences
-import com.kitsumed.shizucallrecorder.data.call.CallDirection
 import com.kitsumed.shizucallrecorder.data.call.EnrichedCallData
 import com.kitsumed.shizucallrecorder.integrations.shizuku.ShizukuConnectionManager
 import com.kitsumed.shizucallrecorder.utils.AppLogger
-import com.kitsumed.shizucallrecorder.utils.PhoneNumberManager
-import com.kitsumed.shizucallrecorder.utils.RecordingFileNameFormatter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -39,15 +33,7 @@ import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * RecordingForegroundService is the long-running foreground service that
- * manage the audio-recording pipeline.
- *
- * The service has two visible states:
- *  - **Standby** – call is active but auto-record is disabled; a notification prompts the user.
- *  - **Recording** – audio pipeline is running; a "Stop" action is shown.
- *
- * @see <a href="https://developer.android.com/guide/components/foreground-services#background-start-restriction">Foreground Service Restrictions (Android 12+)</a>
- * @see <a href="https://developer.android.com/about/versions/14/changes/fgs-types-required">FGS Type Requirements (Android 14+)</a>
+ * RecordingForegroundService is the long-running service that manage the audio-recording logic.
  */
 class RecordingForegroundService : Service() {
     companion object {
@@ -87,6 +73,8 @@ class RecordingForegroundService : Service() {
 
     private lateinit var notificationHelper: RecordingNotificationHelper
 
+    private lateinit var overlayController: RecordingOverlayController
+
     /** IPC stub to the privileged ShellService running in the shell process. */
     private var shellService: IShellService? = null
 
@@ -107,6 +95,7 @@ class RecordingForegroundService : Service() {
         super.onCreate()
         notificationHelper = RecordingNotificationHelper(this)
         notificationHelper.createNotificationChannels()
+        overlayController = RecordingOverlayController(this)
 
         appPreferences = AppPreferences(this)
 
@@ -117,6 +106,7 @@ class RecordingForegroundService : Service() {
                 if (oldState != newState) {
                     updateNotification()
                     notificationHelper.handleStateChangeToasts(oldState, newState)
+                    overlayController.showOverlay(newState)
                     oldState = newState
                 }
             }
@@ -283,6 +273,7 @@ class RecordingForegroundService : Service() {
         // This is the guaranteed last callback before the service process is cleaned up.
         AppLogger.v( "RecordingForegroundService is destroying... Ensuring cleanup...")
         serviceScope.cancel()
+        overlayController.hideOverlay()
         stopRecordingSessionAndService()
         shizukuManager.unbind()
         if (appPreferences.isShizukuAutoManageEnabled() && !appPreferences.isShizukuKeepAliveEnabled()) {
@@ -292,6 +283,7 @@ class RecordingForegroundService : Service() {
     }
 
     // ── Service internal logic ───────────────────────────────────────
+
     /**
      * Orchestrates the recording state at the Service level.
      * Creates a new [AudioRecordingEngine], starts the I/O pipeline, updates the visible notification,
@@ -373,9 +365,8 @@ class RecordingForegroundService : Service() {
 
     /**
      * Calls [startForeground] with the appropriate [ServiceInfo] foreground service type.
-     * Uses [ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE] on API 34+ as required by
-     * Android 14's FGS type enforcement; falls back to DATA_SYNC on API 30-33.
      *
+     * @see <a href="https://developer.android.com/guide/components/foreground-services#background-start-restriction">Foreground Service Restrictions (Android 12+)</a>
      * @param notification The notification to display while in the foreground.
      */
     private fun startForegroundWithType(notification: Notification) {
