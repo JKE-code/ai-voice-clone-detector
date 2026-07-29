@@ -54,6 +54,7 @@ fun RecordingOverlay(
     onDragEnd: () -> Unit
 ) {
     val isActivelyRecording = isRecordingActive && !isRecordingPaused
+    val isActivelyPaused = isRecordingActive && isRecordingPaused
 
     // Infinite transition for the blinking red dot alpha
     val dotAlpha by rememberInfiniteTransition(label = "recordingDotBlink").animateFloat(
@@ -70,6 +71,8 @@ fun RecordingOverlay(
     val buttonBackgroundColor by animateColorAsState(
         targetValue = if (isActivelyRecording)
             MaterialTheme.colorScheme.errorContainer
+        else if (isActivelyPaused)
+            Color.Green.copy(alpha = 0.4f)
         else
             MaterialTheme.colorScheme.primaryContainer,
         animationSpec = tween(durationMillis = 400),
@@ -102,13 +105,13 @@ fun RecordingOverlay(
         ) {
             // Action start/pause/resume
             Box(
-                modifier = Modifier.size(44.dp),
+                modifier = Modifier.size(64.dp),
                 contentAlignment = Alignment.Center
             ) {
                 IconButton(
                     onClick = onActionClick,
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(64.dp)
                         .border(
                             width = 4.dp,
                             color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
@@ -139,7 +142,7 @@ fun RecordingOverlay(
                                 MaterialTheme.colorScheme.onErrorContainer
                             else
                                 MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(42.dp)
                         )
                     }
                 }
@@ -148,7 +151,7 @@ fun RecordingOverlay(
                 if (isActivelyRecording) {
                     Box(
                         modifier = Modifier
-                            .size(14.dp)
+                            .size(18.dp)
                             .align(Alignment.TopEnd)
                             .alpha(dotAlpha)
                             .background(
@@ -170,7 +173,7 @@ fun RecordingOverlay(
                     painter = painterResource(id = R.drawable.ic_outline_drag_indicator),
                     contentDescription = "Move Overlay",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(42.dp)
                 )
             }
         }
