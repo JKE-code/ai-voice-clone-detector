@@ -18,7 +18,13 @@ import android.view.Display
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -81,15 +87,25 @@ class RecordingOverlayController(private val context: Context) {
                 AppPreferences.ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
             val dynamicColor = appPreferences.isDynamicColorEnabled()
+            // State false -> true for the animation
+            val isVisible = remember { MutableTransitionState(false).apply { targetState = true } }
 
             ShizucallrecorderTheme(darkTheme = darkTheme, dynamicColor = dynamicColor) {
-                RecordingOverlay(
-                    isRecordingActive = state.isRecordingActive,
-                    isRecordingPaused = state.isRecordingPaused,
-                    onActionClick = { sendServiceAction(state) },
-                    onDragY = { deltaY -> updateOverlayY(deltaY) },
-                    onDragEnd = { saveOverlayY() }
-                )
+                AnimatedVisibility(
+                    visibleState = isVisible,
+                    enter = slideInHorizontally(
+                        animationSpec = tween(durationMillis = 400),
+                        initialOffsetX = { fullWidth -> fullWidth } // Start it from outside the screen
+                    ) + fadeIn(animationSpec = tween(durationMillis = 400))
+                ) {
+                    RecordingOverlay(
+                        isRecordingActive = state.isRecordingActive,
+                        isRecordingPaused = state.isRecordingPaused,
+                        onActionClick = { sendServiceAction(state) },
+                        onDragY = { deltaY -> updateOverlayY(deltaY) },
+                        onDragEnd = { saveOverlayY() }
+                    )
+                }
             }
         }
     }
