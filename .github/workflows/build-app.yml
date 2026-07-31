@@ -217,7 +217,7 @@ jobs:
           # --generate-notes: Auto-generate release notes from commits
           gh release create "v${RELEASE_VERSION}" \
             --draft \
-            --title "ShizuCallRecorder v${RELEASE_VERSION}" \
+            --title "v${RELEASE_VERSION}" \
             --generate-notes \
             $PRERELEASE_FLAG \
             ./release-assets/${FINAL_APK_NAME}
