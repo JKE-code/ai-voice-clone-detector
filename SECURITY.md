@@ -15,6 +15,8 @@ Reports affecting unsupported versions will be closed without action.
 >[!TIP]
 > Releases are build using Github Actions Runners. We also attests the file so that you can trace them back to the runner. You can see the [Github CLI docs](https://cli.github.com/manual/gh_attestation_verify) on how to do this.
 
+If you need to send me files privately or verify one of my signed commits, my GPG key is linked on [my Github profile](https://github.com/kitsumed).
+
 ---
 
 ## Reporting a Vulnerability
