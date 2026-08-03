@@ -77,12 +77,12 @@ class PhoneNumberManager private constructor(context: Context) {
     }
 
     /**
-     * Determines the device's country ISO code using a multi-step approach:
+     * Determines the device's country ISO code using a multistep approach:
      * 1. Network Country ISO: Based on the current cellular network, which reflects the user's physical location.
      * 2. SIM Country ISO: Based on the SIM card's home country, which is useful if the user is offline but has a SIM card.
      * 3. Locale Country: Based on the device's default locale, which serves as a fallback for tablets or devices in airplane mode without SIM cards.
      * @param context The context used to access the TelephonyManager. **Use the application context to avoid memory leaks**.
-     * @return The determined country ISO code in uppercase (e.g., "US", "GB"). If all methods fail, it will return an empty string.
+     * @return The determined country ISO code in lowercase (e.g., "us", "gb"). If all methods fail, it will return an empty string.
      */
     fun getDeviceCountryIso(): String {
         val telephonyManager = appContext.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
@@ -98,13 +98,24 @@ class PhoneNumberManager private constructor(context: Context) {
 
     /**
      * Parses a phone number string into a structured [Phonenumber.PhoneNumber] object using the specified default region.
+     * Numbers without a leading '+' are normally parsed using [defaultRegion]. If that interpretation is impossible,
+     * the number is retried as an international number because some call providers omit the '+'.
      * @param rawNumber The raw phone number string to parse (e.g., "202-555-0173").
      * @param defaultRegion The default region ISO code to use for parsing (e.g., "US"). If not provided, it will default to the device's country ISO.
      * @return A [Phonenumber.PhoneNumber] object if parsing is successful, or null if parsing fails.
      */
     suspend fun parsePhoneNumber(rawNumber: String, defaultRegion: String = getDeviceCountryIso()): Phonenumber.PhoneNumber? = withContext(Dispatchers.Default) {
         return@withContext try {
-            phoneUtil.parse(rawNumber, defaultRegion.uppercase())
+            val parsedNumber = phoneUtil.parse(rawNumber, defaultRegion.uppercase())
+            // If the parsed number is valid in the selected region, return it. If not, attempt to make it international by adding a leading '+'.
+            if (phoneUtil.isValidNumber(parsedNumber)) {
+                parsedNumber
+            } else {
+                // Prepend "+" and tell the library that it NEED to parse it as international ("ZZ" region code).
+                val internationalNumberStr = if (rawNumber.startsWith("+")) rawNumber else "+$rawNumber"
+                AppLogger.v("Parsed number ($rawNumber) is invalid in region ($defaultRegion), attempting to parse as international: $internationalNumberStr")
+                phoneUtil.parse(internationalNumberStr, "ZZ")
+            }
         } catch (e: Exception) {
             AppLogger.e( "Error parsing phone number: ${e.message}", e)
             null
