@@ -82,24 +82,10 @@ class InCallService : InCallService() {
             return
         }
 
-        val telecomManager = this.getSystemService(TELECOM_SERVICE) as? TelecomManager
-        val packageName = call.details.accountHandle.componentName.packageName
-
-        // Determine if the call is from the system dialer or default dialer (meaning it's a carrier call and not a third-party app call)
-        val isCallFromSystemDialer = packageName == telecomManager?.systemDialerPackage ||
-                packageName == telecomManager?.defaultDialerPackage || // Could be a third-party dialer, but it also means it handle carriers calls.
-                packageName == "com.android.phone"
-
-        // If the call is from a third-party app, only proceed if the user has explicitly enabled third-party app recording.
-        if (!isCallFromSystemDialer && !appPreferences.isRecordThirdPartyCallsEnabled()) {
-            AppLogger.i( "Received call from package ${packageName}, which is not the system or default dialer. Discarding call, user has not enabled third-party call recording.")
-            return
-        }
-
         // Assign and register tracking handles
         activeTrackedCall = call
         call.registerCallback(callCallback)
-        AppLogger.i( "Primary call session detected and tracking initialized. Current state is: ${Connection.stateToString(call.details.state)} (${call.details.state})")
+        AppLogger.i( "Primary call session detected and tracking initialized. Current state is: ${callStateToString(call.details.state)} (${call.details.state})")
 
         // Edge Case: If the call is already active when we receive it
         if (call.details.state == Call.STATE_ACTIVE) {
@@ -111,6 +97,7 @@ class InCallService : InCallService() {
     // NOTE: Some OEMs (ex: Samsung) have already in the past broken this callback
     // (https://github.com/chenxiaolong/BCR/commit/b86fa503bcb7b72f3dc39457e89e5ad5aa197c80).
     // This BCR issue is regarding an Android version we do not support (9-10), but it's worth keeping in mind for future debugging.
+    // We also should not check PhoneAccountHandle here as some OEMs have reports of setting it to null in some specific call states.
     override fun onCallRemoved(call: Call) {
         super.onCallRemoved(call)
         AppLogger.v( "Received onCallRemoved callback for call: ${call.details}")
@@ -118,18 +105,7 @@ class InCallService : InCallService() {
         // Ensure we are tearing down the precise call that we were tracking
         if (call == activeTrackedCall) {
             AppLogger.i( "Primary call session disconnected. Releasing callbacks. Ending recording.")
-
-            // Sever the listener relation to prevent framework memory leaks
-            call.unregisterCallback(callCallback)
-
-            // If an intent (Record or Standby) was successfully pushed to the FGS, we must shut it down
-            if (isPipelineExecuted) {
-                RecordingDecisionEngine.getInstance(this).endRecordingSession()
-                isPipelineExecuted = false
-            }
-
-            // Flush the object reference to fully accept new calls down the road
-            activeTrackedCall = null
+            releasePrimaryTrackedCall()
         } else {
             AppLogger.d( "Received onCallRemoved for non-primary call. Ignoring.")
         }
@@ -144,9 +120,27 @@ class InCallService : InCallService() {
         AppLogger.v( "Received onStateChanged callback for call: ${call.details}, current state: $state")
         // Restrict state change handling to the primary tracked call. This prevents issues with parallel calls (not supported in this implementation).
         if (call != activeTrackedCall) return
-        AppLogger.d( "Primary call state changed to ${Connection.stateToString(call.details.state)} (${call.details.state})")
+        AppLogger.d( "Primary call state changed to ${callStateToString(call.details.state)} (${call.details.state})")
 
 
+        // https://github.com/kitsumed/ShizuCallRecorder/issues/81 Dual-SIM users may have null AccountHandle due to OEM bug, causing crash.
+        if (call.details.state == Call.STATE_SELECT_PHONE_ACCOUNT) {
+            AppLogger.d( "Call is in STATE_SELECT_PHONE_ACCOUNT. This state may not include a AccountHandle. Ignoring.")
+            return
+        }
+        val telecomManager = this.getSystemService(TELECOM_SERVICE) as? TelecomManager
+        // Name of the app package responsible for this call (e.g. system dialer, default dialer, or a third-party app)
+        val packageName = call.details.accountHandle.componentName.packageName
+        val isCallFromSystemDialer = packageName == telecomManager?.systemDialerPackage ||
+                packageName == telecomManager?.defaultDialerPackage || // Could be a third-party dialer, but it also means it handle carriers calls.
+                packageName == "com.android.phone"
+
+        // If the call is from a third-party app and the user has disabled third-party call recording, we should free the primary lock and not trigger the recording pipeline.
+        if (!isCallFromSystemDialer && !appPreferences.isRecordThirdPartyCallsEnabled()) {
+            AppLogger.i( "Tracked call resolved to package $packageName (not system/default dialer). Releasing the primary lock because third-party recording is disabled.")
+            releasePrimaryTrackedCall()
+            return
+        }
 
         if (state == Call.STATE_ACTIVE) {
             // Stop here if we've already executed the RecordingDecision pipeline (so it started the foreground service)
@@ -166,8 +160,6 @@ class InCallService : InCallService() {
             // First attempt to get the name from the user contacts list, then fallback to the telecom-provided caller name
             // (which may be defined by the caller or a third-party app)
             val oscallerName = details.contactDisplayName ?: details.callerDisplayName
-            // Name of the app package responsible for this call (e.g. system dialer, default dialer, or a third-party app)
-            val packageName = details.accountHandle.componentName.packageName
 
             val rawCallData = RawCallData(
                 rawPhoneNumber = PhoneNumberManager.normalisePhoneNumber(rawNumber),
@@ -191,6 +183,43 @@ class InCallService : InCallService() {
                     isPipelineExecuted = false
                 }
             }
+        }
+    }
+
+    /**
+     * Releases the currently tracked primary call, unregistering its callback and ending any active recording session if necessary.
+     */
+    private fun releasePrimaryTrackedCall() {
+        val trackedCall = activeTrackedCall ?: return
+
+        // Sever the listener relation to prevent framework memory leaks
+        trackedCall.unregisterCallback(callCallback)
+
+        // If an intent (Record or Standby) was successfully pushed to the FGS, we must shut it down
+        if (isPipelineExecuted) {
+            RecordingDecisionEngine.getInstance(this).endRecordingSession()
+            isPipelineExecuted = false
+        }
+
+        // Flush the object reference to fully accept new calls down the road
+        activeTrackedCall = null
+    }
+
+    /**
+     * Converts a call state integer to a human-readable string for logging purposes.
+     * @param state The call state integer (e.g., Call.STATE_ACTIVE).
+     * @return A string representation of the call state.
+     */
+    private fun callStateToString (state: Int): String {
+        return when (state) {
+            Call.STATE_NEW -> "NEW"
+            Call.STATE_DIALING -> "DIALING"
+            Call.STATE_RINGING -> "RINGING"
+            Call.STATE_HOLDING -> "HOLDING"
+            Call.STATE_ACTIVE -> "ACTIVE"
+            Call.STATE_DISCONNECTED -> "DISCONNECTED"
+            Call.STATE_SELECT_PHONE_ACCOUNT -> "SELECT_PHONE_ACCOUNT"
+            else -> "UNKNOWN_STATE($state)"
         }
     }
 }
