@@ -57,7 +57,7 @@ import com.kitsumed.shizucallrecorder.system.openGithubReportIssue
 import com.kitsumed.shizucallrecorder.ui.common.M3DropdownField
 import com.kitsumed.shizucallrecorder.ui.common.OptionItem
 import com.kitsumed.shizucallrecorder.ui.common.ToggleListItem
-import com.kitsumed.shizucallrecorder.ui.theme.ShizucallrecorderTheme
+import com.kitsumed.shizucallrecorder.ui.theme.ShizuCallRecorderTheme
 import com.kitsumed.shizucallrecorder.ui.viewmodels.PermissionsViewModel
 import com.kitsumed.shizucallrecorder.utils.AppLogger
 import kotlinx.coroutines.Dispatchers
@@ -297,13 +297,13 @@ fun PermissionsContent(
 ) {
     Surface(
         modifier = modifier
-            .navigationBarsPadding()
             .fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .safeDrawingPadding()
                 .padding(horizontal = 24.dp)
                 .padding(top = 24.dp, bottom = 16.dp)
         ) {
@@ -507,7 +507,7 @@ private fun PermissionCard(
 @Preview(showBackground = true)
 @Composable
 private fun PermissionsScreenPreview() {
-    ShizucallrecorderTheme(darkTheme = false) {
+    ShizuCallRecorderTheme(darkTheme = false) {
         PermissionsContent(
             status = OnboardingStatus.Status(
                 disclaimerAccepted = true,
