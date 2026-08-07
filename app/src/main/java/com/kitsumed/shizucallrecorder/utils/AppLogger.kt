@@ -129,26 +129,35 @@ object AppLogger {
     /**
      * Extracts the calling class name from the current thread stack trace.
      */
-    private fun getCallerTag(): String {
-        val stackTrace = Throwable().stackTrace
+     fun getCallerTag(): String {
         val loggerClassName = AppLogger::class.java.name
-
+        val stackTrace = Throwable().stackTrace
         for (element in stackTrace) {
             val className = element.className
-            // Skip AppLogger itself and anything outside the app's package (e.g., system or library classes)
-            if (className.startsWith(BuildConfig.APPLICATION_ID) && className != loggerClassName) {
-                var simpleName = className.substringAfterLast('.')
-
-                // Strip anonymous class suffixes (e.g., MyClass$1)
-                val dollarIndex = simpleName.indexOf('$')
-                if (dollarIndex > 0) {
-                    simpleName = simpleName.substring(0, dollarIndex)
-                }
-
-                return formatTag(simpleName)
+            if (className == loggerClassName) continue // Skip AppLogger itself
+            // The first class in the stack from our app
+            if (className.startsWith(BuildConfig.APPLICATION_ID)) {
+                return formatTag(formatClassName(className))
             }
         }
-        throw IllegalStateException("Unable to determine caller class name from stack trace.")
+
+        return "UnknownClassName" // Fallback if no  caller is found
+    }
+
+    /**
+     * Formats the class name to a simple tag by stripping package names and anonymous class suffixes.
+     * For example, "com.example.MyClass$1" becomes "MyClass".
+     */
+    private fun formatClassName(className: String): String {
+        var simpleName = className.substringAfterLast('.')
+
+        // Strip anonymous class suffixes (e.g., MyClass$1)
+        val dollarIndex = simpleName.indexOf('$')
+        if (dollarIndex > 0) {
+            simpleName = simpleName.substring(0, dollarIndex)
+        }
+
+        return simpleName
     }
 
     /**

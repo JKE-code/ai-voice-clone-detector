@@ -36,4 +36,5 @@
 # Also strip your our custom AppLogger verbose calls
 -assumenosideeffects class com.kitsumed.shizucallrecorder.utils.AppLogger {
   v(...);
+  java.lang.String getCallerTag(); # Needed because this is used as a parameter the v() method above
 }
