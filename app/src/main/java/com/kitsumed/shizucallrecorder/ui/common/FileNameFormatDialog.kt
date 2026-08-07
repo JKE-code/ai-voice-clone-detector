@@ -111,6 +111,7 @@ fun FileNameFormatDialog(
                     value = text,
                     isError = text.isBlank(),
                     onValueChange = { text = it },
+                    label = { Text(stringResource(R.string.settings_file_name_template)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -181,4 +182,3 @@ private fun SettingsScreenPreview() {
         }
     }
 }
-
