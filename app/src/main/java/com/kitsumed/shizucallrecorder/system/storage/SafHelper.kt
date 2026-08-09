@@ -18,18 +18,16 @@ import kotlin.contracts.contract
 
 /**
  * SafHelper provides utility functions for working with the Android Storage Access Framework (SAF).
- *
- * Users explicitly grant access to a folder via the system document-tree picker.
  */
 object SafHelper {
 
     /**
      * Holds the result of a successful [createAudioFile] call.
      *
-     * @param uri         The content URI of the newly created file (e.g. content://…).
+     * @param uri         The content URI of the newly created file (e.g. content://...).
      * @param descriptor  An open [ParcelFileDescriptor] in read-write mode.
      *                    Must be closed after use (after [ScrcpyAudioMuxer] finalises the container).
-     * @param displayName A human-readable path for logging (e.g. "Recordings/call_incoming_….webm").
+     * @param displayName A human-readable path for logging (e.g. "Recordings/call_incoming.mp3").
      */
     data class SafResult(
         val uri: Uri,
@@ -42,18 +40,35 @@ object SafHelper {
      *
      * @param context    App context used to resolve the [DocumentFile] and open the FD.
      * @param folderUri  The tree URI of the destination folder (from the document-tree picker).
-     * @param fileName   The desired file name including extension (e.g. "call_incoming_….webm").
+     * @param filePath   The desired file path (including its name and file extension) (e.g. "2026/potatoes/recording.mp3").
      * @param mimeType   The MIME type of the file (e.g. "audio/webm" for Opus, "audio/mp4" for AAC).
      * @return A [SafResult] with the URI, open FD, and display name; or null on failure.
      */
-    fun createAudioFile(context: Context, folderUri: Uri, fileName: String, mimeType: String): SafResult? {
-        val directory = DocumentFile.fromTreeUri(context, folderUri) ?: return null
-        if (!directory.canWrite()) return null
+    fun createAudioFile(context: Context, folderUri: Uri, filePath: String, mimeType: String): SafResult? {
+        val rootDir = DocumentFile.fromTreeUri(context, folderUri) ?: return null
+        var currentDir = rootDir
+        if (!currentDir.canWrite()) return null
 
-        val newFile = directory.createFile(mimeType, fileName) ?: return null
+        val pathSegments = filePath.split("/")
+        val fileName = pathSegments.last()
+        val directories = pathSegments.dropLast(1)
+
+        // Create subfolders dynamically
+        for (dirName in directories) {
+            if (dirName.isBlank()) continue
+            val nextDir = currentDir.findFile(dirName)
+            if (nextDir != null && nextDir.isDirectory) {
+                currentDir = nextDir
+            } else {
+                currentDir = currentDir.createDirectory(dirName) ?: return null
+            }
+        }
+
+        val newFile = currentDir.createFile(mimeType, fileName) ?: return null
+
         // Open the file in read-write mode so MediaMuxer can seek back to write headers.
         val fileDescriptor = context.contentResolver.openFileDescriptor(newFile.uri, "rw") ?: return null
-        val displayName = "${directory.name}/$fileName"
+        val displayName = "${rootDir.name}/${filePath.trimStart('/')}"
         return SafResult(newFile.uri, fileDescriptor, displayName)
     }
 
