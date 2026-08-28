@@ -2,8 +2,9 @@ name: Close Missing Information Inactive Issues
 
 on:
   schedule:
-    # Runs once a week on Monday at 02:00 UTC
-    - cron: '0 2 * * 1'
+    # Runs once a week on Monday and Thursday at 02:00 UTC
+    # Run twice a week so cached pagination of issues is accessed once per week, preventing Github from deleting it
+    - cron: '0 2 * * 1,4'
   workflow_dispatch: 
 
 permissions:
