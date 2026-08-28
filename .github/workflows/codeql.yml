@@ -33,7 +33,7 @@ jobs:
         include:
           # Scan java & kotlin, and we will build ourself
           - language: java-kotlin
-            build-mode: manual   # Mode manuel obligatoire pour Android/Gradle
+            build-mode: manual
           # Scan Github Workflow CI, no build needed
           - language: actions
             build-mode: none
