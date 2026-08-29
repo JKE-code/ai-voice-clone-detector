@@ -2,6 +2,7 @@ name: "CodeQL Analysis"
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
     branches: [ "main" ]
   # Runs once a week on Monday at 01:30 UTC
   schedule:
@@ -10,7 +11,8 @@ on:
 
 # Ensure only one analysis runs at a time per PR/branch
 concurrency:
-  group: codeql-${{ github.ref }}
+  # If in PR, we use the PR number so that multiples push cancel the previous job
+  group: codeql-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
