@@ -28,6 +28,8 @@ jobs:
       contents: read
       # Write security report
       security-events: write
+    # True when not pull request, if pull request AND is from weblate-translations branch AND is from weblate user, we skip CodeQL
+    if: "github.event_name != 'pull_request' || !(github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'weblate-translations' && contains(github.actor, 'weblate')))"
 
     strategy:
       fail-fast: false
