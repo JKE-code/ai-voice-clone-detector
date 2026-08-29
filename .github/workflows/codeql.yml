@@ -64,7 +64,7 @@ jobs:
         if: matrix.language == 'java-kotlin'
         env:
           SKIP_SIGNING: true # Prevent build.gradle.kts from throwing error due to missing signing info
-        run: gradle wrapper
+        run: gradle wrapper --no-daemon
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
