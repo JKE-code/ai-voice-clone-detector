@@ -25,22 +25,16 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       
-      - name: Setup Gradle
+      - name: Setup Gradle 9.4.1
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: '8.7'
+          gradle-version: '9.4.1'
 
-      - name: Generate Gradle Wrapper
-        env:
-          SKIP_SIGNING: "true"
-        run: gradle wrapper --no-daemon
-
-      - name: Build Debug APK
+      - name: Build Debug APK with Gradle
         env:
           SKIP_SIGNING: "true"
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          gradle assembleDebug --no-daemon --stacktrace
 
       - name: Prepare APK for Direct Download
         run: |
