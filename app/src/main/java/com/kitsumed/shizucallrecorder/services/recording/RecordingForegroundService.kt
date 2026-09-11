@@ -64,6 +64,9 @@ class RecordingForegroundService : Service() {
 
         /** Intent action sent to this service when the user dismisses the notification (Android 14+). */
         const val ACTION_NOTIFICATION_DISMISSED = "com.kitsumed.shizucallrecorder.SERVICE_NOTIFICATION_DISMISSED"
+
+        /** Intent action to trigger the test preview of the floating HUD. */
+        const val ACTION_TRIGGER_TEST_HUD = "com.truevoice.TRIGGER_TEST_HUD"
     }
 
     // ── Dependencies ──────────────────────────────────────────────────────────
@@ -242,6 +245,9 @@ class RecordingForegroundService : Service() {
             }
 
             ACTION_STOP_RECORDING -> stopRecordingSessionAndService()
+            ACTION_TRIGGER_TEST_HUD -> {
+                overlayController.startTestOverlay()
+            }
             ACTION_NOTIFICATION_DISMISSED -> {
                 AppLogger.d( "Ongoing foreground service notification dismissed by user (Android 14+), reposting.")
                 updateNotification()
@@ -350,6 +356,7 @@ class RecordingForegroundService : Service() {
 
         _serviceState.update { RecordingServiceState.Standby(null) }
         AppLogger.i( "The recording session has been stopped and resources have been released. Stopping foreground service. Goodbye >3")
+        overlayController.hideOverlay()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf() // Stop the service since the session is over
     }

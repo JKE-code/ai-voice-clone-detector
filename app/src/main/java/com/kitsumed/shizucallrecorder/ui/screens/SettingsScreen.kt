@@ -40,6 +40,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Security
@@ -49,6 +50,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -72,6 +74,7 @@ import com.kitsumed.shizucallrecorder.integrations.scrcpy.ScrcpyAudioCodec
 import com.kitsumed.shizucallrecorder.integrations.scrcpy.ScrcpyAudioSource
 import com.kitsumed.shizucallrecorder.integrations.scrcpy.ScrcpyConfig
 import com.kitsumed.shizucallrecorder.services.callDetection.CallDetectionMode
+import com.kitsumed.shizucallrecorder.services.recording.RecordingOverlayController
 import com.kitsumed.shizucallrecorder.system.PersistentFolderPickerContract
 import com.kitsumed.shizucallrecorder.system.openGithubReportIssue
 import com.kitsumed.shizucallrecorder.system.openGithubWiki
@@ -203,7 +206,7 @@ fun SettingsContent(
                 )
             }
             item { AboutSection(versionString = actions.getAppVersion()) }
-            item { TrueVoiceSection() }
+            item { TrueVoiceSection(preferences, updateTrigger, actions) }
             item {
                 RecordingSection(
                     preferences = preferences,
@@ -240,19 +243,34 @@ fun SettingsContent(
 // ── Settings sections ──────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun TrueVoiceSection() {
+private fun TrueVoiceSection(
+    preferences: AppPreferences,
+    updateTrigger: Int,
+    actions: SettingsActions
+) {
     val context = LocalContext.current
-    SettingsSection(title = "True Voice AI Defense & Forensics") {
+    val hasOverlayPermission = remember(updateTrigger) { PermissionChecks.hasOverlayPermission(context) }
+    val isHudEnabled = remember(updateTrigger) { preferences.isSecurityHudEnabled() }
+    val isOverlayShowing = remember(updateTrigger) { RecordingOverlayController.isOverlayShowing() }
+
+    SettingsSection(title = "True Voice AI Defense & Live HUD") {
+        // 1. Forensics Dashboard Card (Glassmorphic)
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 6.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .border(1.dp, Color(0x4438BDF8), RoundedCornerShape(16.dp))
+                .border(
+                    width = 1.dp,
+                    brush = Brush.horizontalGradient(
+                        listOf(Color(0xFF38BDF8), Color(0xFF10B981), Color(0x2238BDF8))
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                )
                 .clickable {
                     context.startActivity(Intent(context, com.truevoice.ui.ForensicTimelineActivity::class.java))
                 },
-            color = Color(0xFF1E293B)
+            color = Color(0xF00F172A)
         ) {
             Row(
                 modifier = Modifier
@@ -264,8 +282,14 @@ private fun TrueVoiceSection() {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
-                            .background(Color(0xFF0284C7).copy(alpha = 0.25f), CircleShape),
+                            .size(42.dp)
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(Color(0xFF0284C7).copy(alpha = 0.4f), Color(0xFF0F172A))
+                                ),
+                                CircleShape
+                            )
+                            .border(1.dp, Color(0xFF38BDF8).copy(alpha = 0.5f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -289,10 +313,11 @@ private fun TrueVoiceSection() {
                             Box(
                                 modifier = Modifier
                                     .background(Color(0xFF064E3B), RoundedCornerShape(6.dp))
+                                    .border(1.dp, Color(0xFF10B981).copy(alpha = 0.4f), RoundedCornerShape(6.dp))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
-                                    text = "AI ACTIVE",
+                                    text = "3S AI ENGINE",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = Color(0xFF10B981),
                                         fontWeight = FontWeight.ExtraBold,
@@ -302,7 +327,7 @@ private fun TrueVoiceSection() {
                             }
                         }
                         Text(
-                            text = "View acoustic timelines & export 1930 dossiers",
+                            text = "Second-by-second acoustic timelines & 1930 dossiers",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = Color(0xFF94A3B8),
                                 fontSize = 11.sp
@@ -313,9 +338,114 @@ private fun TrueVoiceSection() {
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = null,
-                    tint = Color(0xFF94A3B8)
+                    tint = Color(0xFF38BDF8)
                 )
             }
+        }
+
+        // 2. Overlay Permission Prompt (shown if not granted)
+        if (!hasOverlayPermission) {
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF451A03)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Color(0xFFF59E0B),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Live HUD Needs 'Appear on top' Permission",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                color = Color(0xFFFEF3C7),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "To display real-time AI clone risk alerts over Truecaller or your call screen, Android requires 'Display over other apps' permission.",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color(0xFFFDE68A),
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Button(
+                        onClick = {
+                            val intent = Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                "package:${context.packageName}".toUri()
+                            )
+                            context.startActivity(intent)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Grant 'Appear on top' Permission", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+
+        // 3. Security HUD Toggle
+        ToggleListItem(
+            label = "In-Call Floating Security HUD",
+            description = "Displays live glassmorphic AI risk capsule over carrier and Truecaller calls",
+            checked = isHudEnabled,
+            onCheckedChange = { enabled ->
+                actions.setSecurityHudEnabled(enabled)
+                if (enabled && !hasOverlayPermission) {
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        "package:${context.packageName}".toUri()
+                    )
+                    context.startActivity(intent)
+                }
+            }
+        )
+
+        // 4. Test Live Floating HUD on Screen Button (Enhanced Glass CTA)
+        Button(
+            onClick = {
+                RecordingOverlayController.triggerTestOverlay(context)
+                actions.refresh()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isOverlayShowing) Color(0xFF7F1D1D) else Color(0xFF0F172A)
+            ),
+            shape = RoundedCornerShape(12.dp),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                if (isOverlayShowing) Color(0xFFEF4444) else Color(0xFF38BDF8)
+            )
+        ) {
+            Icon(
+                imageVector = if (isOverlayShowing) Icons.Default.Close else Icons.Default.Security,
+                contentDescription = null,
+                tint = if (isOverlayShowing) Color(0xFFFCA5A5) else Color(0xFF38BDF8),
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = if (isOverlayShowing) "✕ Close Floating HUD Preview" else "▶ Test Live Floating HUD (3s Simulation)",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isOverlayShowing) Color(0xFFFEE2E2) else Color(0xFF38BDF8)
+            )
         }
     }
 }
@@ -1332,6 +1462,8 @@ private fun SettingsScreenPreview() {
             override fun setRecordThirdPartyCalls(enabled: Boolean) {}
             override fun setPostRecordingFileNotification(enabled: Boolean) {}
             override fun setOverlayEnabled(enabled: Boolean) {}
+            override fun setSecurityHudEnabled(enabled: Boolean) {}
+            override fun refresh() {}
         }
 
         // File name template selection dialog

@@ -81,6 +81,8 @@ class AppPreferences(context: Context) {
         const val SHOW_TOASTS = true
         // True Voice: Security HUD active by default
         const val SHOW_RECORDING_OVERLAY = true
+        const val TRUEVOICE_SECURITY_HUD_ENABLED = true
+        const val OVERLAY_X_POSITION = -1
         const val OVERLAY_Y_POSITION = -1
         // --- Security ---
         const val SHIZUKU_AUTO_MANAGE = false
@@ -123,13 +125,15 @@ class AppPreferences(context: Context) {
         DYNAMIC_COLOR("dynamic_color"),
         SHOW_TOASTS("show_toasts"),
         SHOW_RECORDING_OVERLAY("show_recording_overlay"),
+        OVERLAY_X_POSITION("overlay_x_position"),
         OVERLAY_Y_POSITION("overlay_y_position"),
         SHIZUKU_AUTO_MANAGE("shizuku_auto_manage"),
         SHIZUKU_START_ON_RECORD("shizuku_start_on_record"),
         SHIZUKU_KEEP_ALIVE("shizuku_keep_alive"),
         SHIZUKU_AUTH_KEY("shizuku_auth_key"),
         CALL_DETECTION_MODE("call_detection_mode"),
-        RECORD_THIRD_PARTY_CALLS("record_third_party_calls");
+        RECORD_THIRD_PARTY_CALLS("record_third_party_calls"),
+        TRUEVOICE_SECURITY_HUD_ENABLED("truevoice_security_hud_enabled");
     }
 
     // -------- Nested enums
@@ -411,11 +415,23 @@ class AppPreferences(context: Context) {
     /** Sets whether toast notifications are enabled. */
     fun setShowToastsEnabled(enabled: Boolean) = setBoolean(Key.SHOW_TOASTS, enabled)
 
+    /** Checks if the True Voice in-call Security HUD is enabled. Default true. */
+    fun isSecurityHudEnabled(): Boolean = getBoolean(Key.TRUEVOICE_SECURITY_HUD_ENABLED, DefaultsValue.TRUEVOICE_SECURITY_HUD_ENABLED)
+
+    /** Sets whether the True Voice in-call Security HUD is enabled. */
+    fun setSecurityHudEnabled(enabled: Boolean) = setBoolean(Key.TRUEVOICE_SECURITY_HUD_ENABLED, enabled)
+
     /** Checks if the recording overlay is enabled. */
     fun isOverlayEnabled() = getBoolean(Key.SHOW_RECORDING_OVERLAY, DefaultsValue.SHOW_RECORDING_OVERLAY)
 
     /** Sets whether the recording overlay is enabled. */
     fun setOverlayEnabled(enabled: Boolean) = setBoolean(Key.SHOW_RECORDING_OVERLAY, enabled)
+
+    /** Gets the X position of the recording overlay. */
+    fun getOverlayXPosition() = getInt(Key.OVERLAY_X_POSITION, DefaultsValue.OVERLAY_X_POSITION)
+
+    /** Sets the X position of the recording overlay. */
+    fun setOverlayXPosition(x: Int) = setInt(Key.OVERLAY_X_POSITION, x)
 
     /** Gets the Y position of the recording overlay. */
     fun getOverlayYPosition() = getInt(Key.OVERLAY_Y_POSITION, DefaultsValue.OVERLAY_Y_POSITION)

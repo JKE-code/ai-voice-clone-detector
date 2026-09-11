@@ -78,6 +78,8 @@ interface SettingsActions {
     fun setRecordThirdPartyCalls(enabled: Boolean)
     fun setPostRecordingFileNotification(enabled: Boolean)
     fun setOverlayEnabled(enabled: Boolean)
+    fun setSecurityHudEnabled(enabled: Boolean)
+    fun refresh()
 }
 
 /**
@@ -143,7 +145,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
      * val autoRecord = remember(updateTrigger) { preferences.isAutoRecordIncomingEnabled() }
      * ```
      */
-    fun refresh() {
+    override fun refresh() {
         _updateTrigger.update { it + 1 }
     }
 
@@ -430,6 +432,14 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
      */
     override fun setOverlayEnabled(enabled: Boolean) {
         preferences.setOverlayEnabled(enabled)
+        refresh()
+    }
+
+    /**
+     * Enables or disables the True Voice in-call floating security HUD.
+     */
+    override fun setSecurityHudEnabled(enabled: Boolean) {
+        preferences.setSecurityHudEnabled(enabled)
         refresh()
     }
 }

@@ -72,7 +72,6 @@
 | **Audio Source Not Switched to Downlink**: The current build uses `VOICE_CALL` (both sides mixed). The architecture specifies `VOICE_CALL_DOWNLINK` for pure caller isolation. | The user's own voice leaks into the analysis buffer, which can confuse anti-spoofing models and raise false positives. | Phase 2 (Audio source configuration) |
 | **Full Universal Analysis (No Whitelist Bypass)**: By design, every call is analyzed regardless of caller identity to protect against Caller ID spoofing and SIM swap attacks. | Ensures zero blind spots, but requires lightweight on-device inference (VAD gating) to remain energy-efficient. | Phase 2 (Silero VAD ONNX gating) |
 | **No Floating Security HUD**: The existing overlay is the original ShizuCallRecorder recording indicator, not a risk-score display. | No real-time visual feedback to the user about voice authenticity or scam risk during the call. | Phase 3 (Compose Overlay Redesign) |
-| **No UPI Auto-Retraction**: The overlay does not detect when a banking app is in the foreground. | UPI/banking apps may still throw "Delete interfering app" errors. | Phase 3 |
 | **No Community Threat Backend**: No pre-call reputation lookup or post-call scam reporting. | No collective defense — each user is isolated. | Phase 4 (FastAPI Backend) |
 
 ---
@@ -243,7 +242,7 @@ implementation("com.microsoft.onnxruntime:onnxruntime-android:1.18.0")
 
 ## PHASE 3: Risk Engine UI & Security HUD [COMPLETED & VERIFIED]
 
-> **Status**: COMPLETED. Full in-call Material 3 Glassmorphism Security HUD pill, UPI ForegroundAppMonitor auto-retraction, ForensicTimelineActivity, interactive Canvas risk waveform, CallHistoryScreen, and 1930 Cybercrime Dossier exporter implemented and tested.
+> **Status**: COMPLETED. Full in-call Material 3 Glassmorphism Security HUD pill, ForensicTimelineActivity, interactive Canvas risk waveform, CallHistoryScreen, and 1930 Cybercrime Dossier exporter implemented and tested.
 > **Goal**: Give the user real-time visual feedback during calls and a forensic audit trail after calls end.
 
 ### 3.1 Overview
@@ -257,7 +256,6 @@ TemporalRiskEngine (Phase 2 output)
 │   Material 3 Glassmorphism  │
 │   🟢 Safe | 🟡 Caution     │
 │   🔴 Clone Alert            │
-│   Auto-retract on UPI apps  │
 └─────────┬───────────────────┘
           │
           ▼
@@ -283,16 +281,7 @@ TemporalRiskEngine (Phase 2 output)
 - **Window flags**: `FLAG_NOT_TOUCHABLE | FLAG_NOT_FOCUSABLE` — prevents Android's `FLAG_WINDOW_IS_OBSCURED` from being triggered, critical for UPI app compatibility.
 - **Data flow**: Observes `TemporalRiskEngine` output via Kotlin `StateFlow` / `SharedFlow`
 
-#### [3B] Smart Overlay Retraction (UPI App Protection)
-- **New file**: `com/truevoice/ui/ForegroundAppMonitor.kt`
-- **Logic**:
-  - Uses `UsageStatsManager` to detect foreground app package
-  - Maintains a blocklist of UPI/banking packages: `com.google.android.apps.nbu.paisa.user` (GPay), `com.phonepe.app`, `net.one97.paytm`, `com.sbi.lotusintouch` (YONO), etc.
-  - When any blocklisted package enters foreground → **instantly dismiss** the overlay or collapse into a standard Android notification
-  - When the user returns to the call/home screen → **restore** the floating HUD
-- **Why this matters**: Indian banking apps (GPay, PhonePe, Paytm) actively detect `SYSTEM_ALERT_WINDOW` overlays and show "Delete interfering app" errors. This auto-retraction is a **hard requirement** for production viability.
-
-#### [3C] Post-Call Forensic Timeline
+#### [3B] Post-Call Forensic Timeline
 - **New file**: `com/truevoice/ui/ForensicTimelineActivity.kt` (Jetpack Compose)
 - **Features**:
   - Interactive second-by-second risk graph (Canvas / charts library)
@@ -303,7 +292,7 @@ TemporalRiskEngine (Phase 2 output)
     - Includes: Caller number, call duration, risk timeline, AI confidence scores, device metadata
   - **Submit to Community Threat Grid**: One-tap button to anonymously report the number to the Phase 4 backend
 
-#### [3D] Call History Dashboard
+#### [3C] Call History Dashboard
 - **New file**: `com/truevoice/ui/CallHistoryScreen.kt` (Jetpack Compose)
 - **Features**:
   - Displays all past calls with their final risk assessment badge
@@ -316,14 +305,12 @@ TemporalRiskEngine (Phase 2 output)
 | File | Package | Purpose |
 | :--- | :--- | :--- |
 | `SecurityHudService.kt` | `com.truevoice.ui` | Foreground service rendering the floating in-call risk pill |
-| `ForegroundAppMonitor.kt` | `com.truevoice.ui` | Detects UPI/banking apps to auto-retract overlay |
 | `ForensicTimelineActivity.kt` | `com.truevoice.ui` | Post-call risk timeline with PDF export |
 | `CallHistoryScreen.kt` | `com.truevoice.ui` | Dashboard showing all calls with risk badges |
 | `RiskColors.kt` | `com.truevoice.ui.theme` | Material 3 color tokens for risk states |
 
 ### 3.4 Verification Plan
 - **Manual test**: Make a call → verify HUD appears with correct state transitions
-- **UPI test**: During active call with HUD visible → open Google Pay → verify HUD disappears and GPay launches without "interfering app" error
 - **Forensic test**: End call → tap call in history → verify timeline renders with correct data
 
 ---
@@ -426,7 +413,7 @@ Phase 1 (COMPLETE ✅)          Phase 2 (NEXT)                Phase 3           
 AudioRecordingEngine ──►  LiveAnalysisSink  ──►  SileroVadEngine         SecurityHudService     FastAPI Backend
     │                         │                      │                        │                      │
     ├── ScrcpyAudioMuxer      ├── OpusPcmDecoder     ▼                       ▼                      ▼
-    │   (Sink 1: .ogg)        ├── AudioResampler  VoiceAuthenticityEngine  ForegroundAppMonitor   ThreatIntelClient
+    │   (Sink 1: .ogg)        ├── AudioResampler  VoiceAuthenticityEngine                         ThreatIntelClient
     │                         ├── PcmRingBuffer       │                      │                      │
     │                         └── AudioTelemetry      ▼                      ▼                      ▼
     │                                            TemporalRiskEngine    ForensicTimeline       ThreatBadge

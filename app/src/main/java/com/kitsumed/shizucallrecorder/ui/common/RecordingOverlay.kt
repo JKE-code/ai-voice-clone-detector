@@ -55,7 +55,8 @@ fun RecordingOverlay(
     isRecordingActive: Boolean,
     isRecordingPaused: Boolean,
     onActionClick: () -> Unit,
-    onDragY: (Float) -> Unit,
+    onDrag: ((Float, Float) -> Unit)? = null,
+    onDragY: (Float) -> Unit = { y -> onDrag?.invoke(0f, y) },
     onDragEnd: () -> Unit
 ) {
     val isActivelyRecording = isRecordingActive && !isRecordingPaused
@@ -116,7 +117,11 @@ fun RecordingOverlay(
                         onDragCancel = onDragEnd,
                         onDrag = { change, dragAmount ->
                             change.consume()
-                            onDragY(dragAmount.y)
+                            if (onDrag != null) {
+                                onDrag(dragAmount.x, dragAmount.y)
+                            } else {
+                                onDragY(dragAmount.y)
+                            }
                         }
                     )
                 }
