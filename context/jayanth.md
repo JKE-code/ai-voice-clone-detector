@@ -70,7 +70,7 @@
 | **No Neural VAD**: RMS energy is a crude voice detector. It cannot distinguish speech from music, TV noise, or consistent background hum. | May trigger unnecessary AI inference on non-speech audio segments, wasting CPU. | Phase 2 (Silero VAD ONNX) |
 | **No AI Model Connected**: The 3-second audio window exists in RAM but nothing evaluates it for synthetic/cloned voice markers yet. | No deepfake detection capability — the ring buffer is "listening" but not "thinking." | Phase 2 (AASIST-Lite / MobileNetV3 ONNX) |
 | **Audio Source Not Switched to Downlink**: The current build uses `VOICE_CALL` (both sides mixed). The architecture specifies `VOICE_CALL_DOWNLINK` for pure caller isolation. | The user's own voice leaks into the analysis buffer, which can confuse anti-spoofing models and raise false positives. | Phase 2 (Audio source configuration) |
-| **No Trusted Whitelist**: Every call triggers the full pipeline regardless of caller. | Wastes battery and CPU on calls from known trusted contacts (Mom, Dad, etc.). | Phase 2 (Room Database) |
+| **Full Universal Analysis (No Whitelist Bypass)**: By design, every call is analyzed regardless of caller identity to protect against Caller ID spoofing and SIM swap attacks. | Ensures zero blind spots, but requires lightweight on-device inference (VAD gating) to remain energy-efficient. | Phase 2 (Silero VAD ONNX gating) |
 | **No Floating Security HUD**: The existing overlay is the original ShizuCallRecorder recording indicator, not a risk-score display. | No real-time visual feedback to the user about voice authenticity or scam risk during the call. | Phase 3 (Compose Overlay Redesign) |
 | **No UPI Auto-Retraction**: The overlay does not detect when a banking app is in the foreground. | UPI/banking apps may still throw "Delete interfering app" errors. | Phase 3 |
 | **No Community Threat Backend**: No pre-call reputation lookup or post-call scam reporting. | No collective defense — each user is isolated. | Phase 4 (FastAPI Backend) |
@@ -187,15 +187,13 @@ PcmRingBuffer (Phase 1 output)
 - **Why critical**: If the user's own voice leaks into the analysis buffer, the anti-spoofing model may score the user's real voice as "human" and average it with the caller's synthetic voice, masking the attack. Pure downlink isolation is essential for accurate detection.
 - **Fallback**: If the device doesn't support `VOICE_CALL_DOWNLINK`, fall back to `VOICE_CALL` with a degraded-accuracy warning in the HUD.
 
-#### [2E] Trusted Contacts Whitelist (Room Database)
-- **New files**:
-  - `com/truevoice/data/TrustedContact.kt` — Room `@Entity` with fields: `phoneNumber`, `displayName`, `addedAt`, `isActive`
-  - `com/truevoice/data/TrustedContactDao.kt` — Room `@Dao` with queries: `isNumberTrusted(phone)`, `getAllTrusted()`, `insert()`, `delete()`
-  - `com/truevoice/data/TrueVoiceDatabase.kt` — Room `@Database` singleton
-- **Behavior**:
-  - **Battery Saver Mode (Default)**: When an incoming call's number matches a whitelisted contact, the entire ML pipeline (VAD + Anti-Spoofing) is skipped. The HUD shows 🟢 "Verified Contact • Analysis Bypassed".
-  - **High-Security Mode**: Even whitelisted contacts are scanned (protects against Caller ID spoofing and SIM swap attacks on high-risk users like senior citizens).
-- **Dependencies**: `androidx.room:room-runtime`, `room-ktx`, `room-compiler` (KSP annotation processor)
+#### [2E] Universal Full Call Analysis (Zero-Trust Architecture)
+- **Design Decision**: **NO trusted contact bypass or whitelist.** Every single call—whether from a saved contact, unknown number, or family member—undergoes real-time voice clone and anti-spoofing analysis.
+- **Why this is critical**:
+  1. **Caller ID Spoofing Defense**: Attackers routinely spoof caller numbers using VoIP services so the call appears to come from "Mom", "Dad", or a known boss. A whitelist would blindly trust the spoofed ID and let deepfakes pass through.
+  2. **SIM Swap Protection**: If a family member's SIM is cloned or compromised, whitelist bypass would create an immediate vulnerability.
+  3. **Privacy & Simplicity**: No need to access, store, or manage personal contact lists or Room database tables on disk.
+- **Efficiency Optimization**: Since every call is inspected, battery and compute are preserved via **Silero VAD gating** ([2B])—inference is only triggered during active speech periods, sleeping during pauses, ringing, and silence.
 
 #### [2F] Temporal Risk Engine
 - **New file**: `com/truevoice/ml/TemporalRiskEngine.kt`
@@ -214,25 +212,17 @@ PcmRingBuffer (Phase 1 output)
 ### 2.3 New Dependencies (build.gradle.kts)
 
 ```kotlin
-// ONNX Runtime for on-device ML inference
+// ONNX Runtime for on-device ML inference (Silero VAD + Anti-Spoofing)
 implementation("com.microsoft.onnxruntime:onnxruntime-android:1.18.0")
-
-// Room Database for Trusted Contacts
-implementation("androidx.room:room-runtime:2.6.1")
-implementation("androidx.room:room-ktx:2.6.1")
-ksp("androidx.room:room-compiler:2.6.1")
 ```
 
 ### 2.4 New Files Summary
 
 | File | Package | Purpose |
 | :--- | :--- | :--- |
-| `SileroVadEngine.kt` | `com.truevoice.ml` | Silero VAD ONNX wrapper — gates anti-spoofing inference |
+| `SileroVadEngine.kt` | `com.truevoice.ml` | Silero VAD ONNX wrapper — gates anti-spoofing inference to active speech |
 | `VoiceAuthenticityEngine.kt` | `com.truevoice.ml` | Anti-spoofing ONNX wrapper — scores voice as human vs synthetic |
 | `TemporalRiskEngine.kt` | `com.truevoice.ml` | Multi-window persistence scoring with INCONCLUSIVE guardrail |
-| `TrustedContact.kt` | `com.truevoice.data` | Room entity for whitelisted phone numbers |
-| `TrustedContactDao.kt` | `com.truevoice.data` | Room DAO for trusted contact queries |
-| `TrueVoiceDatabase.kt` | `com.truevoice.data` | Room database singleton |
 | `silero_vad.onnx` | `assets/models/` | Silero VAD v5 model file (~2 MB) |
 | `anti_spoofing.onnx` | `assets/models/` | AASIST-Lite / MobileNetV3 model file (~6 MB) |
 
@@ -244,7 +234,8 @@ ksp("androidx.room:room-compiler:2.6.1")
   [TrueVoice Authenticity] Window #3: score=0.12 (HUMAN), confidence=0.94
   [TrueVoice Risk] Assessment: SAFE (avg=0.09, windows=5, confidence=0.91)
   ```
-- **Battery benchmark**: Compare battery drain with and without Trusted Contacts whitelist bypass.
+- **Universal verification**: Verify that both saved contact calls and unknown numbers undergo identical real-time analysis without bypass.
+- **Performance benchmark**: Measure CPU and battery consumption across calls to ensure VAD gating keeps resource usage minimal.
 
 ---
 
@@ -438,12 +429,11 @@ AudioRecordingEngine ──►  LiveAnalysisSink  ──►  SileroVadEngine    
     │                         ├── PcmRingBuffer       │                      │                      │
     │                         └── AudioTelemetry      ▼                      ▼                      ▼
     │                                            TemporalRiskEngine    ForensicTimeline       ThreatBadge
-    │                                                 │                      │
-    │                                                 ▼                      ▼
-    │                                            [RiskLevel Flow]     CallHistoryScreen
-    │                                                 │
-    │                                            TrustedContactDao
-    │                                            TrueVoiceDatabase
+                                                 │                      │
+                                                 ▼                      ▼
+                                            [RiskLevel Flow]     CallHistoryScreen
+                                                 │                      │
+                                                 └────────► SecurityHudService
     │
     └── (Original ShizuCallRecorder codebase — untouched)
 ```
