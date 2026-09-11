@@ -1,0 +1,24 @@
+# Deep Learning & Neural Audio Processing
+torch>=2.2.0
+torchaudio>=2.2.0
+onnx>=1.15.0
+onnxruntime>=1.17.0
+onnxscript>=0.1.0
+
+
+# Scientific & DSP Feature Extraction
+numpy>=1.26.0
+scipy>=1.11.0
+librosa>=0.10.1
+soundfile>=0.12.1
+
+# Evaluation & Metrics
+scikit-learn>=1.3.0
+matplotlib>=3.8.0
+tqdm>=4.66.0
+
+# Threat Intelligence Backend (FastAPI)
+fastapi>=0.109.0
+uvicorn>=0.27.0
+pydantic>=2.6.0
+requests>=2.31.0

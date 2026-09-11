@@ -274,4 +274,12 @@ dependencies {
     // Shizuku
     implementation(libs.shizukuApi)
     implementation(libs.shizukuProvider)
+
+    // ONNX Runtime Mobile (Edge AI Voice Clone & VAD Inference)
+    implementation(libs.onnxruntime.android)
+
+    // Unit Testing
+    testImplementation("junit:junit:4.13.2")
 }
+
+

@@ -19,7 +19,14 @@ shizuku-provider = "13.1.5"
 aboutlibraries = "14.2.1"
 libphonenumber = "9.0.36"
 
+# ML / ONNX Runtime
+onnxruntime = "1.18.0"
+
+
 [libraries]
+# ML / ONNX Runtime Mobile
+onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
+
 # AndroidX Core & Lifecycle
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "documentfile" }

@@ -44,4 +44,15 @@ render.experimental.xml
 context/personal_context.md
 context/*personal*.md
 
+# Python Virtual Environments & ML builds
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.onnx
+!app/src/main/assets/models/*.onnx
+ml_pipeline/models/
+
+
+
 
