@@ -39,3 +39,9 @@ render.experimental.xml
 
 # Idk but I don't want to commit theses
 .kotlin/sessions/*
+
+# Personal context files (local machine only)
+context/personal_context.md
+context/*personal*.md
+
+
