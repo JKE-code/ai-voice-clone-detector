@@ -31,17 +31,18 @@ Instead of writing an Android telephony audio capture engine from scratch (which
   - **Sink B (Live Memory Pipeline)**: Feeds an in-memory `OpusLiveDecoder` (Android `MediaCodec` -> raw PCM -> `PcmRingBuffer`).
 - **Why**: Zero disk read-write overhead for AI inference; avoids battery drain and disk I/O bottlenecks during live calls.
 
-### Decision 2: 100% On-Device Edge ML (ONNX Runtime Mobile)
-- **Problem**: Why not stream audio to a cloud API for deepfake detection?
-- **Decision**: All real-time voice clone classification must run **locally on-device** using ONNX Runtime Mobile (`com.microsoft.onnxruntime:onnxruntime-android`).
+### Decision 2: 100% Isolated Standalone Utility (Air-Gapped / Like a Torch App)
+- **Problem**: Should the app depend on cloud servers, external APIs, or background updates?
+- **Decision**: **True Voice is designed as a 100% self-contained, isolated edge utility** (identical to a phone's built-in Flashlight/Torch or Calculator app). Once downloaded and installed, it operates forever completely offline with zero external network dependencies and no mandatory updates.
 - **Why**:
-  - **Zero Network Latency**: Cloud round-trip takes 5–20s; by then the victim has already sent the UPI money. On-device inference evaluates 3-second sliding windows in <150ms.
-  - **Privacy & DPDP Compliance**: Phone call audio never leaves the user's phone, complying strictly with Indian Digital Personal Data Protection (DPDP) laws.
-  - **Works Offline**: Operates even with poor 2G/3G network conditions during travel.
+  - **Zero Network Latency**: Real-time on-device inference runs locally in <10ms via ONNX Mobile.
+  - **Total Privacy & Air-Gapped Security**: Zero call data, transcripts, or telemetry ever leave the device (100% DPDP Act compliance).
+  - **Reliability Anywhere**: Works seamlessly in rural areas, flights, basements, and during cellular data outages.
+  - **Zero Server Infrastructure Costs**: Zero recurring server hosting expenses.
 
 ### Decision 3: Two-Stage Model Pipeline (Silero VAD + Anti-Spoofing Classifier)
 - **Stage 1 (Silero VAD)**: Discards silence, background noise, and pauses (~2MB ONNX model).
-- **Stage 2 (AASIST-Lite / MobileNetV3-Audio)**: Analyzes vocoder artifacts, 8kHz–16kHz frequency cutoffs, unnatural phase transitions, and pitch jitter (~6MB ONNX model).
+- **Stage 2 (AASIST-Lite / MobileNetV3-Audio)**: Analyzes vocoder artifacts, 8kHz–16kHz frequency cutoffs, unnatural phase transitions, and pitch jitter (~1.16MB INT8 ONNX model).
 - **Why**: Saves battery by only running the heavy neural model when actual human speech is detected.
 
 ### Decision 4: Non-Intrusive Floating HUD with Auto-Dismiss on UPI Apps
@@ -51,9 +52,10 @@ Instead of writing an Android telephony audio capture engine from scratch (which
   - Use an Accessibility / Foreground App monitor to **instantly retract the floating HUD into the system notification tray** whenever a banking/UPI app opens.
 - **Why**: Protects the user without blocking their financial applications.
 
-### Decision 5: Hybrid Threat Intelligence (Pre-Call API + Whitelist)
-- **Pre-Call Reputation**: Quick HTTP lookup (`GET /api/v1/reputation?phone=...`) against our FastAPI backend to show threat badges before answering.
-- **Trusted Contacts Whitelist**: Automatic bypass of heavy AI inference for known trusted contacts (saved in local Room DB) to preserve battery, with a toggle for "High-Security Mode" (against caller ID spoofing).
+### Decision 5: On-Device Multilingual Indic Intent & Whitelist
+- **Local Indic Intent Engine**: Native on-device regex & pattern matrix evaluating Hindi, Telugu, Tamil, Kannada, Marathi, Bengali, and Indian English transcripts locally with zero cloud ASR.
+- **Trusted Contacts Whitelist**: Local Room database storing trusted contacts to optionally bypass heavy AI processing and maximize battery life.
+
 
 ---
 
@@ -87,7 +89,23 @@ app/src/main/java/com/kitsumed/shizucallrecorder/
 - [x] **Full Codebase Audit & Mapping**: Examined all Kotlin files, Gradle build scripts, AndroidManifest permissions, and Shizuku/scrcpy bindings.
 - [x] **SIH Master Plan Formulated**: Full architectural design saved in `docs/TRUE_VOICE_SIH_MASTER_PLAN.md`.
 - [x] **Problem Statement Integration**: Formal problem specification mapped in `docs/problem_statement.json`.
-- [x] **Context Synchronization Setup**: Master team context in `context/SIH_TEAM_CONTEXT.md` and teammate context logs in `context/{name}.md`.
+- [x] **Context Synchronization Setup**: Master team & personal context logs in `context/`.
+- [x] **Python ML Model Export & Quantization Pipeline**: Built `ml_pipeline/export_onnx.py` (`VoiceCloneDetectorNet` with Sinc/Conv front-end, SE-ResNet dilated blocks, Attentive Stats Pooling, INT8 quantization) and `ml_pipeline/benchmark.py`.
+- [x] **Android Edge ML & DSP Architecture (Kotlin)**:
+  - `ml/dsp/AudioResampler.kt`: 48kHz stereo to 16kHz mono $[-1.0 .. 1.0]$ float decimation with anti-aliasing.
+  - `ml/dsp/PcmRingBuffer.kt`: Sliding 3.0s window buffer with 0.5s hop.
+  - `ml/SileroVadDetector.kt`: VAD wrapper for Silero ONNX.
+  - `ml/VoiceCloneClassifier.kt`: On-device anti-spoofing classifier.
+  - `ml/TemporalRiskEngine.kt`: Multi-window exponential smoothing and confidence guardrails.
+  - `ml/VoiceCloneDetectionCoordinator.kt`: Orchestrates live audio tap, DSP, ML inference, and emits `StateFlow<VoiceRiskAssessment>`.
+- [x] **Multilingual Indic Intent & Coercion Engine (SIH Nationwide Support)**:
+  - Built `ml_pipeline/indic_intent_detector.py` and `app/src/main/java/com/kitsumed/shizucallrecorder/ml/IndicIntentEngine.kt`.
+  - Full native & transliterated support for **Hindi, Telugu, Tamil, Kannada, Marathi, Bengali, and Indian English** across 4 fraud buckets (Financial Demands, Authority Impersonation, Emotional Extortion, Urgency Pressure).
+  - Dual-track hybrid fusion in `TemporalRiskEngine.kt` (65% Acoustic Voice Physics + 35% Indic Intent Coercion).
+- [x] **Python Virtual Environment (`.venv`)**: Initialized at workspace root with full ML dependency pipeline.
+- [x] **Unit Testing Suite**: Created `AudioResamplerTest.kt`, `PcmRingBufferTest.kt`, `TemporalRiskEngineTest.kt`, and `IndicIntentEngineTest.kt`.
+
+
 
 ---
 

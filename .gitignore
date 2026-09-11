@@ -46,3 +46,13 @@ context/*personal*.md
 context/*.local.md
 context/*_personal.md
 context/copilot_context.md
+
+# Python Virtual Environments & ML builds
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.onnx
+!app/src/main/assets/models/*.onnx
+ml_pipeline/models/
+
