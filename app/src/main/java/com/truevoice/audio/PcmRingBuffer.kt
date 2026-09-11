@@ -76,6 +76,22 @@ class PcmRingBuffer(
     }
 
     /**
+     * Returns the total number of valid samples currently held in the buffer.
+     */
+    fun getAvailableSamples(): Int {
+        synchronized(lock) {
+            return min(totalSamplesWritten, capacity.toLong()).toInt()
+        }
+    }
+
+    /**
+     * Extracts a snapshot of all currently available audio in the ring buffer up to max capacity.
+     */
+    fun getSnapshot(): FloatArray {
+        return getLatestWindow(maxDurationSeconds)
+    }
+
+    /**
      * Resets the buffer pointer and sample count.
      */
     fun clear() {

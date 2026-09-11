@@ -24,6 +24,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
@@ -116,22 +117,17 @@ class RecordingOverlayController(private val context: Context) {
             val isVisible = remember { MutableTransitionState(false).apply { targetState = true } }
 
             // Observe live Phase 2 AI risk assessment
-            val liveRiskAssessment by if (activeEngine != null) {
-                activeEngine.liveAnalysisSink.riskFlow.collectAsState()
-            } else {
-                remember {
-                    androidx.compose.runtime.mutableStateOf(
-                        RiskAssessment(
-                            level = RiskLevel.INCONCLUSIVE,
-                            smoothedScore = 0.0f,
-                            confidence = 0.0f,
-                            consecutiveAlertWindows = 0,
-                            totalEvaluatedWindows = 0,
-                            latestResult = null
-                        )
+            val liveRiskAssessment = activeEngine?.liveAnalysisSink?.riskFlow?.collectAsState()?.value
+                ?: remember {
+                    RiskAssessment(
+                        level = RiskLevel.INCONCLUSIVE,
+                        smoothedScore = 0.0f,
+                        confidence = 0.0f,
+                        consecutiveAlertWindows = 0,
+                        totalEvaluatedWindows = 0,
+                        latestResult = null
                     )
                 }
-            }
 
             ShizuCallRecorderTheme(darkTheme = darkTheme, dynamicColor = dynamicColor) {
                 AnimatedVisibility(
