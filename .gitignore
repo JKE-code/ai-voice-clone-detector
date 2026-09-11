@@ -46,3 +46,4 @@ context/*personal*.md
 context/krazy.md
 context/*.local.md
 context/*_personal.md
+context/copilot_context.md
