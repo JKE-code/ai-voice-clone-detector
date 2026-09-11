@@ -185,6 +185,7 @@ android {
     }
     androidResources {
         generateLocaleConfig = true
+        noCompress += "onnx"
     }
     dependenciesInfo {
         // Disables dependency metadata when building APKs (for IzzyOnDroid/F-Droid)
@@ -274,4 +275,7 @@ dependencies {
     // Shizuku
     implementation(libs.shizukuApi)
     implementation(libs.shizukuProvider)
+
+    // Edge AI: ONNX Runtime Mobile
+    implementation(libs.onnxruntime)
 }

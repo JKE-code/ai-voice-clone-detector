@@ -66,7 +66,8 @@ class AppPreferences(context: Context) {
         const val DEBUG_CALLER_NUMBER = ""
         
         // --- Audio/Scrcpy Quality ---
-        val AUDIO_SOURCE = ScrcpyAudioSource.VOICE_CALL.cliKey
+        // True Voice uses VOICE_CALL_DOWNLINK to isolate pure remote caller audio (zero mic bleed)
+        val AUDIO_SOURCE = ScrcpyAudioSource.VOICE_CALL_DOWNLINK.cliKey
         val AUDIO_CODEC = ScrcpyAudioCodec.OPUS.cliKey
 
         val AUDIO_BITRATE = ScrcpyAudioCodec.OPUS.defaultBitRate
@@ -78,7 +79,8 @@ class AppPreferences(context: Context) {
         val THEME_MODE = ThemeMode.SYSTEM
         const val DYNAMIC_COLOR = true
         const val SHOW_TOASTS = true
-        const val SHOW_RECORDING_OVERLAY = false
+        // True Voice: Security HUD active by default
+        const val SHOW_RECORDING_OVERLAY = true
         const val OVERLAY_Y_POSITION = -1
         // --- Security ---
         const val SHIZUKU_AUTO_MANAGE = false

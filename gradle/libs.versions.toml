@@ -18,6 +18,7 @@ shizuku-provider = "13.1.5"
 # Utility
 aboutlibraries = "14.2.1"
 libphonenumber = "9.0.36"
+onnxruntime = "1.18.0"
 
 [libraries]
 # AndroidX Core & Lifecycle
@@ -51,6 +52,9 @@ aboutlibraries-compose-m3 = { module = "com.mikepenz:aboutlibraries-compose-m3",
 
 # Libphonenumber
 libphonenumber = { module = "com.googlecode.libphonenumber:libphonenumber", version.ref = "libphonenumber" }
+
+# ONNX Runtime for Edge ML Inference
+onnxruntime = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

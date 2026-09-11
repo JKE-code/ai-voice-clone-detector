@@ -28,6 +28,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectable
@@ -36,6 +40,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -196,6 +201,7 @@ fun SettingsContent(
                 )
             }
             item { AboutSection(versionString = actions.getAppVersion()) }
+            item { TrueVoiceSection() }
             item {
                 RecordingSection(
                     preferences = preferences,
@@ -230,6 +236,87 @@ fun SettingsContent(
 }
 
 // ── Settings sections ──────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun TrueVoiceSection() {
+    val context = LocalContext.current
+    SettingsSection(title = "True Voice AI Defense & Forensics") {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .border(1.dp, Color(0x4438BDF8), RoundedCornerShape(16.dp))
+                .clickable {
+                    context.startActivity(Intent(context, com.truevoice.ui.ForensicTimelineActivity::class.java))
+                },
+            color = Color(0xFF1E293B)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(Color(0xFF0284C7).copy(alpha = 0.25f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Security,
+                            contentDescription = null,
+                            tint = Color(0xFF38BDF8),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Call Shield & Forensics",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .background(Color(0xFF064E3B), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "AI ACTIVE",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = Color(0xFF10B981),
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 9.sp
+                                    )
+                                )
+                            }
+                        }
+                        Text(
+                            text = "View acoustic timelines & export 1930 dossiers",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color(0xFF94A3B8),
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = Color(0xFF94A3B8)
+                )
+            }
+        }
+    }
+}
 
 /** Shows the app version, server version, clipboard buttons, and a GitHub link.
  */

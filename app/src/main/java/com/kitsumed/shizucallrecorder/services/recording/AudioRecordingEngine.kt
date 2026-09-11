@@ -192,11 +192,14 @@ class AudioRecordingEngine {
                     AppLogger.d( "Stream metadata confirmed: codec=${codec.cliKey} fourCC=0x${codec.codecFourCC.toString(16)}")
                     currentCodecEnum = codec
                     scrcpyAudioMuxer?.initialize(codec)
-                    // Initialize Sink 2 in-memory decoder with confirmed stream properties
+                    // Initialize Sink 2 in-memory decoder and AI models with confirmed stream properties
                     liveAnalysisSink.initialize(
                         codec = codec,
                         sampleRate = ScrcpyConfig.AUDIO_SAMPLE_RATE,
-                        channels = ScrcpyConfig.AUDIO_CHANNELS
+                        channels = ScrcpyConfig.AUDIO_CHANNELS,
+                        context = context,
+                        callerNumber = initializationMetadata?.getBestNumber() ?: "Unknown",
+                        callerName = initializationMetadata?.callerName
                     )
                 }
 

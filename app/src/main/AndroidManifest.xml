@@ -64,6 +64,12 @@
             </intent-filter>
         </activity>
 
+        <!-- True Voice Post-Call Forensic Timeline & Incident Dossier Activity -->
+        <activity
+            android:name="com.truevoice.ui.ForensicTimelineActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Shizucallrecorder" />
+
         <!-- Activity to show the user a confirmation dialog before deleting a recording -->
         <activity
             android:name=".services.recording.DeleteDialogConfirmationActivity"

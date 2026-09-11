@@ -23,7 +23,8 @@ data class AudioPipelineSnapshot(
     val totalPcmSamplesDecoded: Long,
     val bufferDurationSeconds: Float,
     val currentRmsEnergy: Float,
-    val lastError: String?
+    val lastError: String?,
+    val latestRiskAssessment: com.truevoice.ml.RiskAssessment? = null
 )
 
 class AudioTelemetry {
@@ -53,6 +54,9 @@ class AudioTelemetry {
     
     @Volatile
     var lastError: String? = null
+
+    @Volatile
+    var latestRiskAssessment: com.truevoice.ml.RiskAssessment? = null
     
     private var lastSecondTimestampNanos = System.nanoTime()
 
@@ -87,7 +91,8 @@ class AudioTelemetry {
             totalPcmSamplesDecoded = totalPcmSamplesDecoded.get(),
             bufferDurationSeconds = bufferDurationSeconds,
             currentRmsEnergy = currentRmsEnergy,
-            lastError = lastError
+            lastError = lastError,
+            latestRiskAssessment = latestRiskAssessment
         )
     }
 
@@ -100,6 +105,7 @@ class AudioTelemetry {
         bufferDurationSeconds = 0f
         currentRmsEnergy = 0f
         lastError = null
+        latestRiskAssessment = null
         lastSecondTimestampNanos = System.nanoTime()
     }
 }

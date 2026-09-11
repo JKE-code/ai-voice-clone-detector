@@ -41,12 +41,19 @@ import com.kitsumed.shizucallrecorder.data.AppPreferences
 import com.kitsumed.shizucallrecorder.system.permissions.PermissionChecks
 import com.kitsumed.shizucallrecorder.ui.common.RecordingOverlay
 import com.kitsumed.shizucallrecorder.ui.theme.ShizuCallRecorderTheme
+import com.truevoice.ml.RiskAssessment
+import com.truevoice.ml.RiskLevel
+import com.truevoice.ui.ForegroundAppMonitor
+import com.truevoice.ui.hud.SecurityHudPill
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Controller that hosts a ComposeView inside WindowManager for the optional recording overlay popup.
- * This involves a bit of complicated stuff as compose was not made for this : https://helw.net/2025/08/31/compose-ui-without-an-activity/
+ * Controller that hosts a ComposeView inside WindowManager for True Voice in-call floating security HUD.
  */
 class RecordingOverlayController(private val context: Context) {
     private val overlayContext: Context by lazy {
@@ -66,9 +73,25 @@ class RecordingOverlayController(private val context: Context) {
     private var windowParams: WindowManager.LayoutParams? = null
     private var lifecycleOwner: ComposeWindowLifecycleOwner? = null
 
+    private val controllerScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var isRetractedByUpi = false
+
+    private val upiMonitor by lazy {
+        ForegroundAppMonitor(
+            context = context,
+            onSensitiveAppFocused = { sensitivePkg ->
+                isRetractedByUpi = true
+                composeView?.visibility = View.GONE
+            },
+            onSensitiveAppDismissed = {
+                isRetractedByUpi = false
+                composeView?.visibility = View.VISIBLE
+            }
+        )
+    }
+
     /**
-     * Displays the recording overlay with the current state.
-     * If the overlay is disabled in preferences or the app lacks overlay permission, it will hide the overlay instead.
+     * Displays the recording overlay and True Voice security HUD with the current state.
      */
     fun showOverlay(state: RecordingServiceState) {
         if (!appPreferences.isOverlayEnabled() || !PermissionChecks.hasOverlayPermission(context)) {
@@ -78,7 +101,10 @@ class RecordingOverlayController(private val context: Context) {
 
         if (composeView == null) {
             initOverlayView()
+            upiMonitor.startMonitoring(controllerScope)
         }
+
+        val activeEngine = (state as? RecordingServiceState.Active)?.engine
 
         composeView?.setContent {
             val darkTheme = when (appPreferences.getThemeMode()) {
@@ -87,24 +113,60 @@ class RecordingOverlayController(private val context: Context) {
                 AppPreferences.ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
             val dynamicColor = appPreferences.isDynamicColorEnabled()
-            // State false -> true for the animation
             val isVisible = remember { MutableTransitionState(false).apply { targetState = true } }
+
+            // Observe live Phase 2 AI risk assessment
+            val liveRiskAssessment by if (activeEngine != null) {
+                activeEngine.liveAnalysisSink.riskFlow.collectAsState()
+            } else {
+                remember {
+                    androidx.compose.runtime.mutableStateOf(
+                        RiskAssessment(
+                            level = RiskLevel.INCONCLUSIVE,
+                            smoothedScore = 0.0f,
+                            confidence = 0.0f,
+                            consecutiveAlertWindows = 0,
+                            totalEvaluatedWindows = 0,
+                            latestResult = null
+                        )
+                    )
+                }
+            }
 
             ShizuCallRecorderTheme(darkTheme = darkTheme, dynamicColor = dynamicColor) {
                 AnimatedVisibility(
                     visibleState = isVisible,
                     enter = slideInHorizontally(
                         animationSpec = tween(durationMillis = 400),
-                        initialOffsetX = { fullWidth -> fullWidth } // Start it from outside the screen
+                        initialOffsetX = { fullWidth -> fullWidth }
                     ) + fadeIn(animationSpec = tween(durationMillis = 400))
                 ) {
-                    RecordingOverlay(
-                        isRecordingActive = state.isRecordingActive,
-                        isRecordingPaused = state.isRecordingPaused,
-                        onActionClick = { sendServiceAction(state) },
-                        onDragY = { deltaY -> updateOverlayY(deltaY) },
-                        onDragEnd = { saveOverlayY() }
-                    )
+                    androidx.compose.foundation.layout.Column(
+                        horizontalAlignment = androidx.compose.ui.Alignment.End
+                    ) {
+                        // True Voice Real-Time Security HUD Pill
+                        SecurityHudPill(
+                            assessment = liveRiskAssessment,
+                            onDragY = { deltaY -> updateOverlayY(deltaY) },
+                            onDragEnd = { saveOverlayY() },
+                            onDismiss = { hideOverlay() },
+                            onOpenForensics = {
+                                val intent = Intent(context, com.truevoice.ui.ForensicTimelineActivity::class.java).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(intent)
+                            }
+                        )
+
+                        // Compact call recording action controls
+                        RecordingOverlay(
+                            isRecordingActive = state.isRecordingActive,
+                            isRecordingPaused = state.isRecordingPaused,
+                            onActionClick = { sendServiceAction(state) },
+                            onDragY = { deltaY -> updateOverlayY(deltaY) },
+                            onDragEnd = { saveOverlayY() }
+                        )
+                    }
                 }
             }
         }
@@ -172,6 +234,7 @@ class RecordingOverlayController(private val context: Context) {
      * Hides the overlay and cleans up resources.
      */
     fun hideOverlay() {
+        upiMonitor.stopMonitoring()
         composeView?.let { view ->
             runCatching { windowManager.removeView(view) }
 
