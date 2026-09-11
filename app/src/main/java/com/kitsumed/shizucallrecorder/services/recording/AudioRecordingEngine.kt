@@ -26,6 +26,7 @@ import com.kitsumed.shizucallrecorder.integrations.scrcpy.ServerExtractor
 import com.kitsumed.shizucallrecorder.system.storage.SafHelper
 import com.kitsumed.shizucallrecorder.utils.AppLogger
 import com.kitsumed.shizucallrecorder.utils.RecordingFileNameFormatter
+import com.truevoice.audio.LiveAnalysisSink
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -52,6 +53,9 @@ class AudioRecordingEngine {
 
     /** Writes scrcpy decoded audio packets into the output container (OPUS/AAC). */
     var scrcpyAudioMuxer: ScrcpyAudioMuxer? = null
+
+    /** Sink 2: Live In-Memory Audio Analysis Sink for True Voice real-time AI processing. */
+    val liveAnalysisSink = LiveAnalysisSink()
 
     /** Metadata captured during the [startPipeline] and locked. Used for checks in [release]. */
     var initializationMetadata: EnrichedCallData? = null
@@ -188,16 +192,27 @@ class AudioRecordingEngine {
                     AppLogger.d( "Stream metadata confirmed: codec=${codec.cliKey} fourCC=0x${codec.codecFourCC.toString(16)}")
                     currentCodecEnum = codec
                     scrcpyAudioMuxer?.initialize(codec)
+                    // Initialize Sink 2 in-memory decoder with confirmed stream properties
+                    liveAnalysisSink.initialize(
+                        codec = codec,
+                        sampleRate = ScrcpyConfig.AUDIO_SAMPLE_RATE,
+                        channels = ScrcpyConfig.AUDIO_CHANNELS
+                    )
                 }
 
                 /** Called for every audio frame received from the pipe. */
                 override fun onAudioPacket(packet: ScrcpyClient.AudioPacket) {
                     if (isPaused) return // Drop packets while paused, do not write to muxer
+                    // Sink 1: Storage (Full call preserved as .ogg)
                     scrcpyAudioMuxer?.writePacket(packet, currentCodecEnum)
+
+                    // Sink 2: In-Memory Live Analysis (RAM only, decoded to PCM)
+                    liveAnalysisSink.enqueuePacket(packet, currentCodecEnum)
                 }
 
                 /** Called when the stream ends normally (EOF) or with an error. */
                 override fun onStreamEnd(error: String?) {
+                    liveAnalysisSink.stop()
                     if (error != null) {
                         AppLogger.w( "Scrcpy-client reported stopping parsing due to an audio stream error: $error")
                     } else {
@@ -245,6 +260,7 @@ class AudioRecordingEngine {
         runCatching { audioPipeReadScope?.cancel() }
         runCatching { audioReadPipePfd?.close() }
         runCatching { scrcpyAudioMuxer?.close() }
+        runCatching { liveAnalysisSink.release() }
         runCatching { outputPfd?.close() }
     }
 
