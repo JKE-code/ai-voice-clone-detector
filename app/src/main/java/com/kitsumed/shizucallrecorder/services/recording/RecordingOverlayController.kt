@@ -168,7 +168,8 @@ class RecordingOverlayController(private val context: Context) {
             val isVisible = remember { MutableTransitionState(false).apply { targetState = true } }
 
             // Observe live Phase 2 AI risk assessment
-            val liveRiskAssessment = activeEngine?.liveAnalysisSink?.riskFlow?.collectAsState()?.value
+            val liveRiskAssessment
+            = activeEngine?.liveAnalysisSink?.riskFlow?.collectAsState()?.value
                 ?: remember {
                     RiskAssessment(
                         level = RiskLevel.INCONCLUSIVE,
