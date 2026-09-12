@@ -207,64 +207,13 @@ fun SecurityHudPill(
                             .background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(2.dp))
                     )
 
-                    // ── Primary Header: Status & Live 3-Second Threat Meter ──────
+                    // ── Primary Header: Left Waveform & Score, Right Actionable Advisory ──────
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Pulsing Threat Glow Orb
-                        Box(
-                            modifier = Modifier
-                                .size(14.dp)
-                                .scale(if (currentLevel != RiskLevel.SAFE) pulseScale else 1.0f)
-                                .background(color = borderColor.copy(alpha = dotAlpha), shape = CircleShape)
-                                .border(1.dp, Color.White.copy(alpha = 0.6f), CircleShape)
-                        )
-
-                        Spacer(modifier = Modifier.width(10.dp))
-
-                        // Title & Live 3-Second Temporal Label
-                        Column(modifier = Modifier.weight(1f)) {
-                            val speaker = assessment.speakerMatch
-                            val title = when {
-                                speaker?.isEnrolled == true && speaker.isMatch -> "Verified: ${speaker.contactName}"
-                                speaker?.isEnrolled == true && !speaker.isMatch -> "Mismatch: ${speaker.contactName}"
-                                currentLevel == RiskLevel.SAFE -> "Voice Verified"
-                                currentLevel == RiskLevel.CAUTION -> "Analyzing Speech..."
-                                currentLevel == RiskLevel.CLONE_ALERT -> "CRITICAL: AI Clone"
-                                currentLevel == RiskLevel.FINANCIAL_COERCION -> "Coercion Scam"
-                                currentLevel == RiskLevel.INCONCLUSIVE -> "True Voice Shield"
-                                else -> "True Voice Shield"
-                            }
-
-                            val windowInfo = if (assessment.totalEvaluatedWindows > 0) {
-                                "3.0s Window #${assessment.totalEvaluatedWindows}"
-                            } else {
-                                "Calibrating 3s Ring Buffer"
-                            }
-
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = title,
-                                    style = MaterialTheme.typography.titleSmall.copy(
-                                        color = borderColor,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        fontSize = 13.sp
-                                    )
-                                )
-                            }
-                            Text(
-                                text = windowInfo,
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = Color(0xFF94A3B8),
-                                    fontSize = 10.sp,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            )
-                        }
-
-                        // Live Acoustic Mini Waveform Visualizer
+                        // 1. Live Acoustic Mini Waveform Visualizer (Far Left)
                         AcousticMiniWaveform(
                             phase = wavePhase,
                             riskLevel = currentLevel,
@@ -273,7 +222,7 @@ fun SecurityHudPill(
 
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        // Prominent Live Threat Score Badge: Professional Risk % & Status
+                        // 2. Risk Scoring & Likelihood Badge (Shifted to Left)
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
@@ -294,12 +243,12 @@ fun SecurityHudPill(
                                         fontFamily = FontFamily.Monospace
                                     )
                                 )
-                                val verdictLabel = when (currentLevel) {
-                                    RiskLevel.SAFE -> "Likely Human"
-                                    RiskLevel.CAUTION -> "Suspicious"
-                                    RiskLevel.CLONE_ALERT -> "AI Clone"
-                                    RiskLevel.FINANCIAL_COERCION -> "Scam Threat"
-                                    RiskLevel.INCONCLUSIVE -> "Analyzing"
+                                val verdictLabel = when {
+                                    percentage >= 75 || currentLevel == RiskLevel.CLONE_ALERT -> "Likely AI"
+                                    percentage >= 45 || currentLevel == RiskLevel.CAUTION -> "Suspicious"
+                                    currentLevel == RiskLevel.FINANCIAL_COERCION -> "Scam Threat"
+                                    currentLevel == RiskLevel.SAFE -> "Likely Human"
+                                    else -> "Analyzing"
                                 }
                                 Text(
                                     text = verdictLabel,
@@ -312,9 +261,73 @@ fun SecurityHudPill(
                             }
                         }
 
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        // 3. Dynamic Real-Time Security Advisory Directive (Towards the Right)
+                        val triggers = assessment.conversationalRisk?.triggeredKeywords ?: emptyList()
+                        val isOtpOrPin = triggers.any { kw ->
+                            kw.contains("otp", ignoreCase = true) ||
+                            kw.contains("pin", ignoreCase = true) ||
+                            kw.contains("cvv", ignoreCase = true) ||
+                            kw.contains("password", ignoreCase = true)
+                        }
+                        val speaker = assessment.speakerMatch
+
+                        val (advisoryTitle, advisorySubtext, isCriticalAlert) = when {
+                            // High priority: OTP / Banking sensitive scam
+                            isOtpOrPin -> Triple("NEVER SHARE OTP!", "Bank/Police never ask OTP", true)
+                            currentLevel == RiskLevel.FINANCIAL_COERCION -> Triple("Scam Coercion Alert", "High-pressure tactics detected", true)
+
+                            // Enrolled Caller Biometric Mismatch
+                            speaker?.isEnrolled == true && !speaker.isMatch -> Triple("Caller Voice Mismatch!", "Not ${speaker.contactName}'s voice", true)
+
+                            // Critical synthetic AI clone threat (>= 75% or CLONE_ALERT)
+                            percentage >= 75 || currentLevel == RiskLevel.CLONE_ALERT -> Triple("Extreme Caution Advised", "Likely AI / Synthetic Voice", true)
+
+                            // Suspicious voice (50% - 74% or CAUTION)
+                            percentage >= 50 || currentLevel == RiskLevel.CAUTION -> Triple("Be Cautious", "Suspicious acoustic markers", false)
+
+                            // Mild suspicion (35% - 49%)
+                            percentage >= 35 -> Triple("Stay Alert", "Analyzing speech dynamics", false)
+
+                            // Enrolled caller verified
+                            speaker?.isEnrolled == true && speaker.isMatch -> Triple("Identity Confirmed", "Verified: ${speaker.contactName}", false)
+
+                            // Normal authentic call
+                            currentLevel == RiskLevel.SAFE -> Triple("Call Protected", "Natural Human Voice", false)
+
+                            // Calibrating / Inconclusive
+                            else -> Triple("Shield Active", "Monitoring Speech...", false)
+                        }
+
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = advisoryTitle,
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = if (isCriticalAlert) RiskColors.CloneAlertRedText else Color.White,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 12.sp,
+                                    lineHeight = 14.sp
+                                ),
+                                maxLines = 1
+                            )
+                            Text(
+                                text = advisorySubtext,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = if (isCriticalAlert) RiskColors.CloneAlertRed.copy(alpha = 0.9f) else Color(0xFF94A3B8),
+                                    fontSize = 10.sp,
+                                    lineHeight = 12.sp
+                                ),
+                                maxLines = 1
+                            )
+                        }
+
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        // Quick Dismiss Button
+                        // 4. Quick Dismiss Button (Far Right)
                         Box(
                             modifier = Modifier
                                 .size(24.dp)
