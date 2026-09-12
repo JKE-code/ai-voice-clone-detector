@@ -34,10 +34,10 @@ class PcmRingBufferTest {
 
         assertEquals(1, emitCount)
         assertTrue(ringBuffer.isFull())
-        // Last 10 samples should be [3f, 4f, 5f, 6f, 7f, 8f, 9f, 10f, 11f, 12f]
+        // First emitted full window at sample 10 has [1f .. 10f]
         assertEquals(10, lastEmittedWindow?.size)
-        assertEquals(3f, lastEmittedWindow!![0], 0.001f)
-        assertEquals(12f, lastEmittedWindow!![9], 0.001f)
+        assertEquals(1f, lastEmittedWindow!![0], 0.001f)
+        assertEquals(10f, lastEmittedWindow!![9], 0.001f)
     }
 
     @Test

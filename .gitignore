@@ -27,8 +27,10 @@ app/release/*
 *.iml
 .idea/
 misc.xml
-deploymentTargetDropDown.xml
-render.experimental.xml
+paytm_dump.xml
+paytm_test.xml
+*.xml.tmp
+
 
 # Keystore files
 *.jks
@@ -55,4 +57,5 @@ __pycache__/
 *.onnx
 !app/src/main/assets/models/*.onnx
 ml_pipeline/models/
+ai-voice-detector-portable/.models/
 

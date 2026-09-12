@@ -35,28 +35,48 @@ enum class CoercionCategory {
 class ConversationalCoercionEngine {
 
     companion object {
-        // Indian Cyber-Scam Keyword Lexicon (English + Hinglish Transliteration)
+        // Trilingual Indian Cyber-Scam Keyword Lexicon (English, Hindi/Hinglish, Telugu/Tenglish)
         private val FINANCIAL_KEYWORDS = setOf(
-            "otp", "pin", "cvv", "upi", "gpay", "google pay", "phonepe", "paytm",
-            "immediate transfer", "send money", "bank account", "transfer now",
-            "account blocked", "kyc expired", "paisa bhejo", "turant bhejo", "paise transfer"
+            // English
+            "otp", "pin", "cvv", "upi", "gpay", "google pay", "phonepe", "paytm", "bhim", "qr code",
+            "immediate transfer", "send money", "bank account", "transfer now", "account blocked", "kyc expired",
+            // Hindi / Hinglish
+            "paisa bhejo", "paise bhejo", "pese bhej", "rupaye bhej", "rupaye transfer", "khate me dal",
+            "khate mein dal", "otp bata", "otp batao", "rakam transfer", "paise do", "turant bhejo", "paise transfer",
+            // Telugu / Tenglish
+            "paisalu pampu", "dabbulu pampu", "money pampu", "pampinchu", "otp cheppu", "khata lo vei",
+            "khata lo veyyi", "khata lo pampinchu", "account lo pampu", "dabbulu ivvu", "paisalu ivvu", "pin cheppu"
         )
 
         private val AUTHORITY_KEYWORDS = setOf(
-            "police", "arrest", "cbi", "ed", "crime branch", "cyber cell",
-            "fir registered", "court warrant", "customs", "parcel seized",
-            "drugs found", "police station", "thana", "hiraasat", "giraftaar"
+            // English
+            "police", "arrest", "cbi", "ed", "crime branch", "cyber cell", "fir registered", "court warrant",
+            "customs", "parcel seized", "drugs found", "police station", "inspector", "dsp", "court", "jail", "detained", "custody",
+            // Hindi / Hinglish
+            "thana", "thane me hu", "thaana", "hiraasat", "giraftaar", "case darj", "police pakad liya", "arrest kar liya", "chowki",
+            // Telugu / Tenglish
+            "police station lo unna", "station lo unna", "pattu kunnaru", "arrest chesaru", "case kattali", "jail nunchi", "station ki ravali"
         )
 
         private val EMERGENCY_KEYWORDS = setOf(
-            "accident", "hospital", "icu", "emergency", "operation", "admitted",
-            "injured", "blood required", "kidnapped", "life in danger",
-            "jaan khatre mein", "bachao"
+            // English
+            "accident", "hospital", "icu", "emergency", "operation", "admitted", "injured", "blood required",
+            "kidnapped", "life in danger", "save me", "help me",
+            // Hindi / Hinglish
+            "hadsa ho gaya", "hadsa hua", "jaan khatre mein", "bachao", "bacha lo", "aspatal me hu", "aspatal mein hu",
+            "madad karo", "madat chaiye", "meri madad",
+            // Telugu / Tenglish
+            "accident ayyindi", "gundepotu", "jarigindi", "hospital lo unna", "dawakana lo unna", "kapadandi",
+            "sahayam cheyandi", "naaku help", "nannu kapadandi"
         )
 
         private val SECRECY_KEYWORDS = setOf(
-            "don't tell anyone", "do not hang up", "stay on line", "keep call connected",
-            "call mat kaatna", "kisi ko mat batana", "secret rakho"
+            // English
+            "don't tell anyone", "do not hang up", "stay on line", "keep call connected", "immediately", "right now", "urgent", "urgently",
+            // Hindi / Hinglish
+            "call mat kaatna", "phone mat katna", "kisi ko mat batana", "secret rakho", "turant", "jaldi", "abhi ke abhi",
+            // Telugu / Tenglish
+            "call cut cheyoddu", "phone pettoddu", "evariki cheppoddu", "tonderga", "ventane", "ippude"
         )
     }
 

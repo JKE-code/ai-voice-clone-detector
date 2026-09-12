@@ -1,0 +1,7 @@
+numpy
+scipy
+imageio-ffmpeg
+torch
+transformers
+huggingface-hub
+safetensors

@@ -179,6 +179,9 @@ android {
         aidl = true
         buildConfig = true
     }
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
     packaging {
         // Exclude the original metadata from libphonenumber to avoid conflicts with our extracted version. This ensures only our processed assets are included in the final APK.
         resources.excludes.add("com/google/i18n/phonenumbers/data/**")

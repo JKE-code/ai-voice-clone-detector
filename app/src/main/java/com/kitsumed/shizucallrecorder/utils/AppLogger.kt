@@ -96,7 +96,11 @@ object AppLogger {
         get() {
             // The main process name accurately matches the APPLICATION_ID.
             // Any other process (Shizuku, :remote service, etc.) will have a different or suffixed name.
-            return android.app.Application.getProcessName() != BuildConfig.APPLICATION_ID
+            return try {
+                android.app.Application.getProcessName() != BuildConfig.APPLICATION_ID
+            } catch (e: Throwable) {
+                false
+            }
         }
 
     /**

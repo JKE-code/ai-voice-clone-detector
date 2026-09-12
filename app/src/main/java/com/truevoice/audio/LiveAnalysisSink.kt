@@ -246,9 +246,10 @@ class LiveAnalysisSink(
                 com.truevoice.forensics.ForensicRepository.recordWindow(authResult, assessment, isSpeech)
 
                 AppLogger.d(
-                    "[TrueVoice AI] Authenticity: ${authResult.label} (score=${"%.2f".format(authResult.syntheticScore)}, " +
-                    "conf=${"%.2f".format(authResult.confidence)}, time=${authResult.inferenceTimeMs}ms) -> " +
-                    "RiskAssessment: ${assessment.level} (smoothed=${"%.2f".format(assessment.smoothedScore)})"
+                    "[TrueVoice AI] label=${authResult.label} score=${"%.2f".format(authResult.syntheticScore)} " +
+                    "conf=${"%.2f".format(authResult.confidence)} trend=${"%+.3f".format(authResult.temporalTrend)} " +
+                    "frames=[${authResult.subFrameScores.joinToString { "%.2f".format(it) }}] " +
+                    "time=${authResult.inferenceTimeMs}ms → Risk=${assessment.level} (smoothed=${"%.2f".format(assessment.smoothedScore)})"
                 )
             } catch (e: Exception) {
                 AppLogger.w("[TrueVoice AI] Error during inference cycle: ${e.message}")

@@ -79,6 +79,16 @@ class TemporalRiskEngine(
             consecutiveCloneCount = 0
         }
 
+        // Rising trend boost: if synthetic markers are escalating within this window
+        // (positive temporalTrend means score is worsening towards the end of the clip)
+        // AND overall score is suspicious, treat it as one extra consecutive hit.
+        // This allows faster detection of mid-call voice switching without lowering
+        // the persistence threshold for stable, non-escalating calls.
+        if (result.temporalTrend > 0.08f && result.syntheticScore >= cautionThreshold) {
+            consecutiveCloneCount++
+            AppLogger.d("[TrueVoice Risk] Rising temporal trend (${"%.3f".format(result.temporalTrend)}) — consecutive count boosted to $consecutiveCloneCount")
+        }
+
         return currentAssessment(latest = result)
     }
 
