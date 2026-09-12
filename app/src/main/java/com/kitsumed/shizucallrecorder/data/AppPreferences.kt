@@ -66,8 +66,9 @@ class AppPreferences(context: Context) {
         const val DEBUG_CALLER_NUMBER = ""
         
         // --- Audio/Scrcpy Quality ---
-        // True Voice uses VOICE_CALL_DOWNLINK to isolate pure remote caller audio (zero mic bleed)
-        val AUDIO_SOURCE = ScrcpyAudioSource.VOICE_CALL_DOWNLINK.cliKey
+        // True Voice uses VOICE_CALL (dual mode) so full call recordings on disk preserve both sides,
+        // while LiveAnalysisSink isolates Channel 0 (downlink) in RAM for live AI clone detection.
+        val AUDIO_SOURCE = ScrcpyAudioSource.VOICE_CALL.cliKey
         val AUDIO_CODEC = ScrcpyAudioCodec.OPUS.cliKey
 
         val AUDIO_BITRATE = ScrcpyAudioCodec.OPUS.defaultBitRate

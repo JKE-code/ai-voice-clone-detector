@@ -35,7 +35,8 @@ class AudioResampler {
         byteBuffer: ByteBuffer,
         inputSampleRate: Int = 48000,
         inputChannels: Int = 2,
-        targetSampleRate: Int = 16000
+        targetSampleRate: Int = 16000,
+        downlinkChannelOnly: Boolean = true
     ): ResampledAudio {
         val shortBuffer = byteBuffer.order(ByteOrder.LITTLE_ENDIAN).asShortBuffer()
         val totalShorts = shortBuffer.remaining()
@@ -44,7 +45,8 @@ class AudioResampler {
             return ResampledAudio(FloatArray(0), 0f)
         }
 
-        // Step 1: Downmix channels to mono float [-1.0, 1.0]
+        // Step 1: In stereo mode, isolate Channel 0 (Downlink / Far-end caller)
+        // to prevent local microphone bleed from corrupting AI clone analysis.
         val monoCount = totalShorts / inputChannels
         val monoFloats = FloatArray(monoCount)
 
@@ -52,7 +54,7 @@ class AudioResampler {
             for (i in 0 until monoCount) {
                 val left = shortBuffer.get(i * 2) / 32768.0f
                 val right = shortBuffer.get(i * 2 + 1) / 32768.0f
-                monoFloats[i] = (left + right) * 0.5f
+                monoFloats[i] = if (downlinkChannelOnly) left else (left + right) * 0.5f
             }
         } else {
             for (i in 0 until monoCount) {
