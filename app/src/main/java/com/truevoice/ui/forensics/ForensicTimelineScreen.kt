@@ -362,25 +362,49 @@ private fun ForensicWaveformCard(record: ForensicCallRecord) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header: Title and Legend
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Acoustic Synthetic Timeline",
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+            // Header: Title & Clean Dedicated Legend
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Acoustic Synthetic Timeline",
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
                     )
-                )
 
-                // Compact Legend
+                    val maxScore = (record.peakSyntheticScore * 100).toInt()
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(RiskColors.getContainerColorForRisk(record.finalVerdict))
+                            .border(1.dp, RiskColors.getBorderColorForRisk(record.finalVerdict).copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 8.dp, vertical = 2.5.dp)
+                    ) {
+                        Text(
+                            text = "Peak: $maxScore%",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = RiskColors.getTextColorForRisk(record.finalVerdict),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Dedicated Legend Row (Full Width - never wraps into vertical text)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
@@ -388,51 +412,51 @@ private fun ForensicWaveformCard(record: ForensicCallRecord) {
                                 .size(7.dp)
                                 .background(RiskColors.SafeGreen, CircleShape)
                         )
-                        Spacer(modifier = Modifier.width(3.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "Score",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = Color(0xFF94A3B8),
-                                fontSize = 10.sp
+                                fontSize = 11.sp
                             )
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .width(10.dp)
+                                .width(12.dp)
                                 .height(2.dp)
                                 .background(RiskColors.CautionAmber)
                         )
-                        Spacer(modifier = Modifier.width(3.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "Caution (40%)",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = RiskColors.CautionAmberText,
-                                fontSize = 10.sp
+                                fontSize = 11.sp
                             )
                         )
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .width(10.dp)
+                                .width(12.dp)
                                 .height(2.dp)
                                 .background(RiskColors.CloneAlertRed)
                         )
-                        Spacer(modifier = Modifier.width(3.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = "Alert (65%)",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = RiskColors.CloneAlertRedText,
-                                fontSize = 10.sp
+                                fontSize = 11.sp
                             )
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Chart Container Box
             val points = record.timeline
