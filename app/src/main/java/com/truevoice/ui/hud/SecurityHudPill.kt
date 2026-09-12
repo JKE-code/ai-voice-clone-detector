@@ -163,9 +163,9 @@ fun SecurityHudPill(
                 )
             }
     ) {
-        Surface(
+                Surface(
             modifier = Modifier
-                .widthIn(min = 210.dp, max = 340.dp)
+                .widthIn(min = 260.dp, max = 380.dp)
                 .pointerInput(Unit) {
                     detectDragGestures(
                         onDragEnd = onDragEnd,
@@ -226,12 +226,16 @@ fun SecurityHudPill(
 
                         // Title & Live 3-Second Temporal Label
                         Column(modifier = Modifier.weight(1f)) {
-                            val title = when (currentLevel) {
-                                RiskLevel.SAFE -> "Voice Verified"
-                                RiskLevel.CAUTION -> "Analyzing Speech..."
-                                RiskLevel.CLONE_ALERT -> "CRITICAL: AI Clone"
-                                RiskLevel.FINANCIAL_COERCION -> "Coercion Scam"
-                                RiskLevel.INCONCLUSIVE -> "True Voice Shield"
+                            val speaker = assessment.speakerMatch
+                            val title = when {
+                                speaker?.isEnrolled == true && speaker.isMatch -> "Verified: ${speaker.contactName}"
+                                speaker?.isEnrolled == true && !speaker.isMatch -> "Mismatch: ${speaker.contactName}"
+                                currentLevel == RiskLevel.SAFE -> "Voice Verified"
+                                currentLevel == RiskLevel.CAUTION -> "Analyzing Speech..."
+                                currentLevel == RiskLevel.CLONE_ALERT -> "CRITICAL: AI Clone"
+                                currentLevel == RiskLevel.FINANCIAL_COERCION -> "Coercion Scam"
+                                currentLevel == RiskLevel.INCONCLUSIVE -> "True Voice Shield"
+                                else -> "True Voice Shield"
                             }
 
                             val windowInfo = if (assessment.totalEvaluatedWindows > 0) {
@@ -269,7 +273,7 @@ fun SecurityHudPill(
 
                         Spacer(modifier = Modifier.width(8.dp))
 
-                        // Prominent Live Threat Score Badge
+                        // Prominent Live Threat Score Badge: Professional Risk % & Status
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
@@ -277,22 +281,35 @@ fun SecurityHudPill(
                                 .border(1.dp, borderColor.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
-                            val scoreLabel = when (currentLevel) {
-                                RiskLevel.CLONE_ALERT -> "$percentage% CLONE"
-                                RiskLevel.SAFE -> "$percentage% HUMAN"
-                                RiskLevel.FINANCIAL_COERCION -> "SCAM"
-                                RiskLevel.CAUTION -> "$percentage% SUSP"
-                                RiskLevel.INCONCLUSIVE -> "SCAN"
-                            }
-                            Text(
-                                text = scoreLabel,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = RiskColors.getTextColorForRisk(currentLevel),
-                                    fontWeight = FontWeight.Black,
-                                    fontSize = 10.sp,
-                                    fontFamily = FontFamily.Monospace
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = "Risk: $percentage%",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = RiskColors.getTextColorForRisk(currentLevel),
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 10.sp,
+                                        fontFamily = FontFamily.Monospace
+                                    )
                                 )
-                            )
+                                val verdictLabel = when (currentLevel) {
+                                    RiskLevel.SAFE -> "Likely Human"
+                                    RiskLevel.CAUTION -> "Suspicious"
+                                    RiskLevel.CLONE_ALERT -> "AI Clone"
+                                    RiskLevel.FINANCIAL_COERCION -> "Scam Threat"
+                                    RiskLevel.INCONCLUSIVE -> "Analyzing"
+                                }
+                                Text(
+                                    text = verdictLabel,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = borderColor,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 9.sp
+                                    )
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.width(6.dp))
