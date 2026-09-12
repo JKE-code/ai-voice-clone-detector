@@ -81,6 +81,8 @@ class LiveAnalysisSink(
     private var lastInferenceNanos = 0L
 
     private var mlScope: CoroutineScope? = null
+    private var speakerEngine: com.truevoice.biometrics.SpeakerVerificationEngine? = null
+    private var activeCallerNumber: String = "Unknown"
 
     /**
      * Initializes the in-memory decoder and AI engines for the call.
@@ -96,6 +98,7 @@ class LiveAnalysisSink(
     ) {
         release()
 
+        activeCallerNumber = callerNumber
         telemetry.reset()
         telemetry.codecName = codec.cliKey
         telemetry.inputSampleRate = sampleRate
@@ -110,11 +113,13 @@ class LiveAnalysisSink(
 
         val activeContext = context ?: appContext
         if (activeContext != null) {
+            com.truevoice.forensics.ForensicRepository.initialize(activeContext.applicationContext)
+            speakerEngine = com.truevoice.biometrics.SpeakerVerificationEngine(activeContext.applicationContext)
             try {
                 vadEngine = SileroVadEngine(activeContext.applicationContext).apply { initialize() }
                 authenticityEngine = VoiceAuthenticityEngine(activeContext.applicationContext).apply { initialize() }
             } catch (e: Exception) {
-                AppLogger.w("[TrueVoice ML] Error initializing AI engines: ${e.message}")
+                AppLogger.w("[TrueVoice] AI engine init failed: ${e.message}")
             }
         }
 
@@ -239,8 +244,16 @@ class LiveAnalysisSink(
                     VoiceAuthenticityEngine(appContext ?: return@launch).use { it.evaluateWindow(window) }
                 }
 
-                // 3. Temporal Risk Fusion
-                val assessment = riskEngine.processResult(authResult)
+                // 3. Speaker Biometrics (Expected Caller Check)
+                val speakerMatch = speakerEngine?.verifyCaller(activeCallerNumber, window)
+
+                // 4. Temporal Risk Fusion
+                val baseAssessment = riskEngine.processResult(authResult)
+                val assessment = if (speakerMatch?.isEnrolled == true) {
+                    baseAssessment.copy(speakerMatch = speakerMatch)
+                } else {
+                    baseAssessment
+                }
                 telemetry.latestRiskAssessment = assessment
                 _riskFlow.value = assessment
                 com.truevoice.forensics.ForensicRepository.recordWindow(authResult, assessment, isSpeech)
@@ -248,6 +261,7 @@ class LiveAnalysisSink(
                 AppLogger.d(
                     "[TrueVoice AI] label=${authResult.label} score=${"%.2f".format(authResult.syntheticScore)} " +
                     "conf=${"%.2f".format(authResult.confidence)} trend=${"%+.3f".format(authResult.temporalTrend)} " +
+                    "speaker=${speakerMatch?.let { if (it.isEnrolled) "${it.contactName}:${it.isMatch}" else "unenrolled" } ?: "none"} " +
                     "frames=[${authResult.subFrameScores.joinToString { "%.2f".format(it) }}] " +
                     "time=${authResult.inferenceTimeMs}ms → Risk=${assessment.level} (smoothed=${"%.2f".format(assessment.smoothedScore)})"
                 )
@@ -280,7 +294,12 @@ class LiveAnalysisSink(
         vadEngine = null
         authenticityEngine?.close()
         authenticityEngine = null
-        com.truevoice.forensics.ForensicRepository.endSession()
+        val finalRecord = com.truevoice.forensics.ForensicRepository.endSession()
+        if (finalRecord != null && (finalRecord.finalVerdict == RiskLevel.CLONE_ALERT || finalRecord.finalVerdict == RiskLevel.FINANCIAL_COERCION)) {
+            CoroutineScope(Dispatchers.IO).launch {
+                com.truevoice.network.ThreatApiClient.submitThreatReport(finalRecord)
+            }
+        }
         AppLogger.d("[TrueVoice] LiveAnalysisSink stopped")
     }
 

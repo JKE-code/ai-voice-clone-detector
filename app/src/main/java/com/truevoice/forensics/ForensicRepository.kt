@@ -29,6 +29,30 @@ object ForensicRepository {
     val callHistory: StateFlow<List<ForensicCallRecord>> = _callHistory.asStateFlow()
 
     private var currentSession: ActiveSession? = null
+    private var database: com.truevoice.data.db.TrueVoiceDatabase? = null
+
+    /**
+     * Initializes the repository with persistent SQLite storage.
+     */
+    @Synchronized
+    fun initialize(context: Context) {
+        if (database == null) {
+            val db = com.truevoice.data.db.TrueVoiceDatabase.getInstance(context)
+            database = db
+            val existing = db.getAllCallRecords()
+            if (existing.isNotEmpty()) {
+                _callHistory.value = existing
+                AppLogger.i("[TrueVoice Forensics] Loaded ${existing.size} call records from SQLite")
+            } else {
+                val samples = createInitialSampleHistory()
+                for (s in samples) {
+                    db.insertCallRecord(s)
+                }
+                _callHistory.value = samples
+                AppLogger.i("[TrueVoice Forensics] Initialized database with ${samples.size} sample audits")
+            }
+        }
+    }
 
     private class ActiveSession(
         val callId: String,
@@ -157,6 +181,9 @@ object ForensicRepository {
         )
 
         currentSession = null
+
+        // Save to persistent SQLite database
+        database?.insertCallRecord(record)
 
         // Prepend to call history (most recent first)
         val updated = listOf(record) + _callHistory.value

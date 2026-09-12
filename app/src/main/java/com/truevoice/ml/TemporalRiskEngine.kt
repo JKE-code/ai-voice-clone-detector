@@ -29,7 +29,8 @@ data class RiskAssessment(
     val consecutiveAlertWindows: Int,
     val totalEvaluatedWindows: Int,
     val latestResult: AuthenticityResult?,
-    val conversationalRisk: ConversationalRiskResult? = null
+    val conversationalRisk: ConversationalRiskResult? = null,
+    val speakerMatch: com.truevoice.biometrics.SpeakerMatchResult? = null
 )
 
 /**
