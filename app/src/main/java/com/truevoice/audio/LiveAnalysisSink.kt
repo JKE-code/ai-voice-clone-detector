@@ -214,24 +214,46 @@ class LiveAnalysisSink(
 
         scope.launch {
             try {
-                // 1. Silero VAD gate
+                // 1. Voice Activity & Audio Energy Gate
+                // Compute energy across the entire 3.0-second analysis window
+                var sumSq = 0.0
+                for (s in window) {
+                    sumSq += (s * s)
+                }
+                val windowRms = kotlin.math.sqrt(sumSq / window.size).toFloat()
+
+                // If the entire 3.0s window is near-silent (< -46 dB), skip inference to save CPU
+                if (windowRms < 0.005f) {
+                    return@launch
+                }
+
                 val vad = vadEngine
                 val isSpeech = if (vad != null) {
-                    // Check last 512 samples for active speech
-                    val testChunk = if (window.size >= SileroVadEngine.WINDOW_SIZE_SAMPLES) {
-                        window.copyOfRange(window.size - SileroVadEngine.WINDOW_SIZE_SAMPLES, window.size)
-                    } else {
-                        window
+                    // Check trailing 3 contiguous 512-sample frames (~100ms) or check window RMS
+                    val chunkSize = SileroVadEngine.WINDOW_SIZE_SAMPLES
+                    var recentSpeech = false
+                    if (window.size >= chunkSize * 3) {
+                        for (step in 1..3) {
+                            val start = window.size - (step * chunkSize)
+                            val testChunk = window.copyOfRange(start, start + chunkSize)
+                            if (vad.isSpeechPresent(testChunk)) {
+                                recentSpeech = true
+                                break
+                            }
+                        }
+                    } else if (window.size >= chunkSize) {
+                        val testChunk = window.copyOfRange(window.size - chunkSize, window.size)
+                        recentSpeech = vad.isSpeechPresent(testChunk)
                     }
-                    vad.isSpeechPresent(testChunk)
+                    // Speech detected by VAD or clear vocal energy in the window
+                    recentSpeech || (windowRms >= 0.012f)
                 } else {
-                    // Energy fallback: RMS > 0.015 indicates voice presence
-                    val rms = telemetry.currentRmsEnergy
-                    rms > 0.015f
+                    // Energy fallback: RMS >= 0.010 indicates active caller voice
+                    windowRms >= 0.010f
                 }
 
                 if (!isSpeech) {
-                    // Voice is silent/paused: skip heavy anti-spoofing to preserve CPU
+                    // Pure background hum without active voice: skip heavy neural inference
                     return@launch
                 }
 

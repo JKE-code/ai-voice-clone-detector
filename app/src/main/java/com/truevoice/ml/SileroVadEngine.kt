@@ -39,9 +39,8 @@ class SileroVadEngine(
     private var ortEnv: OrtEnvironment? = null
     private var ortSession: OrtSession? = null
 
-    // Hidden states for Silero v5 LSTM
-    private var hState: Array<Array<FloatArray>> = Array(2) { Array(1) { FloatArray(128) } }
-    private var cState: Array<Array<FloatArray>> = Array(2) { Array(1) { FloatArray(128) } }
+    // Hidden state for Silero v5 RNN [2, 1, 128]
+    private var state: Array<Array<FloatArray>> = Array(2) { Array(1) { FloatArray(128) } }
 
     private var isInitialized = false
 
@@ -103,21 +102,20 @@ class SileroVadEngine(
                 longArrayOf(1, WINDOW_SIZE_SAMPLES.toLong())
             )
 
-            // Sample rate tensor shape: [1]
+            // Sample rate scalar tensor shape: []
             val srTensor = OnnxTensor.createTensor(
                 env,
-                longArrayOf(SAMPLE_RATE)
+                java.nio.LongBuffer.wrap(longArrayOf(SAMPLE_RATE)),
+                longArrayOf()
             )
 
-            // Recurrent state tensors: h and c shape [2, 1, 128]
-            val hTensor = OnnxTensor.createTensor(env, hState)
-            val cTensor = OnnxTensor.createTensor(env, cState)
+            // Recurrent state tensor: shape [2, 1, 128]
+            val stateTensor = OnnxTensor.createTensor(env, state)
 
             val inputs = mapOf(
                 "input" to inputTensor,
-                "sr" to srTensor,
-                "h" to hTensor,
-                "c" to cTensor
+                "state" to stateTensor,
+                "sr" to srTensor
             )
 
             val results = session.run(inputs)
@@ -127,23 +125,19 @@ class SileroVadEngine(
             val outputVal = results.get(0).value as Array<FloatArray>
             val probability = outputVal[0][0]
 
-            // Update recurrent state if output tensors provided by model
-            if (results.size() >= 3) {
+            // Update recurrent state if output tensor provided by model
+            if (results.size() >= 2) {
                 @Suppress("UNCHECKED_CAST")
-                val newH = results.get(1).value as? Array<Array<FloatArray>>
-                @Suppress("UNCHECKED_CAST")
-                val newC = results.get(2).value as? Array<Array<FloatArray>>
-                if (newH != null && newC != null) {
-                    hState = newH
-                    cState = newC
+                val newState = results.get(1).value as? Array<Array<FloatArray>>
+                if (newState != null) {
+                    state = newState
                 }
             }
 
             // Cleanup OnnxTensors
             inputTensor.close()
             srTensor.close()
-            hTensor.close()
-            cTensor.close()
+            stateTensor.close()
             results.close()
 
             probability
@@ -167,8 +161,7 @@ class SileroVadEngine(
     fun resetState() {
         for (i in 0 until 2) {
             for (j in 0 until 1) {
-                hState[i][j].fill(0.0f)
-                cState[i][j].fill(0.0f)
+                state[i][j].fill(0.0f)
             }
         }
     }

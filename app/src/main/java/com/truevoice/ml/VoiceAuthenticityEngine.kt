@@ -184,23 +184,23 @@ class VoiceAuthenticityEngine(
         }
 
         // ── Step 4: Temporal-Aware Score Fusion ──────────────────────────────────
-        // Weights:
-        //   Neural ONNX (full-window):         50% — global spectral context
-        //   DSP peak sub-frame score:           30% — catches partial/switching attacks
-        //   DSP mean sub-frame score:           20% — overall session baseline
-        // If no neural model: 60% peak + 40% mean DSP
+        // VoiceCloneDetectorNet ONNX model is the primary authority (>90% accuracy).
+        // The hand-crafted DSP sub-frame heuristics serve as supplemental detection for
+        // transient brickwall vocoder cutoffs mid-call, or as offline fallback.
         val fusedScore: Float
         val fusedConfidence: Float
 
         if (neuralScore != null && neuralConfidence != null) {
-            // Trend boost: if synthetic markers are rising sharply (trend > 0.05 per sub-frame),
-            // apply a small upward correction — indicates escalating attack.
-            val trendBoost = if (trend > 0.05f) (trend * 0.15f).coerceAtMost(0.12f) else 0f
-            fusedScore = ((0.50f * neuralScore) + (0.30f * peakSubFrameScore) + (0.20f * meanSubFrameScore) + trendBoost)
-                .coerceIn(0.0f, 1.0f)
-            fusedConfidence = maxOf(neuralConfidence, 0.70f)
+            // Neural model is loaded: trust neural prediction directly.
+            // If mid-call voice switching or a strong vocoder artifact occurs, allow subframe escalation.
+            fusedScore = if (peakSubFrameScore >= 0.70f && subFrameCutoffDetected) {
+                maxOf(neuralScore, peakSubFrameScore)
+            } else {
+                neuralScore
+            }
+            fusedConfidence = maxOf(neuralConfidence, 0.85f)
         } else {
-            // DSP-only path (model not loaded or inference failed)
+            // Fallback to DSP feature analysis ONLY if ONNX model is unavailable
             val trendBoost = if (trend > 0.05f) (trend * 0.10f).coerceAtMost(0.08f) else 0f
             fusedScore = ((0.60f * peakSubFrameScore) + (0.40f * meanSubFrameScore) + trendBoost)
                 .coerceIn(0.0f, 1.0f)
@@ -354,6 +354,19 @@ class VoiceAuthenticityEngine(
             val inputBuffer = FloatArray(WINDOW_SAMPLE_COUNT)
             val copyLen = minOf(samples.size, WINDOW_SAMPLE_COUNT)
             System.arraycopy(samples, samples.size - copyLen, inputBuffer, 0, copyLen)
+
+            // CRITICAL: Unit Peak Normalization matching training distribution
+            var maxPeak = 0.0f
+            for (s in inputBuffer) {
+                val a = abs(s)
+                if (a > maxPeak) maxPeak = a
+            }
+            if (maxPeak > 1e-4f) {
+                val invPeak = 1.0f / maxPeak
+                for (i in inputBuffer.indices) {
+                    inputBuffer[i] *= invPeak
+                }
+            }
 
             val inputTensor = OnnxTensor.createTensor(
                 env,
